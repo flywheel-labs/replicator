@@ -1,0 +1,4 @@
+display_name: Replicator
+short_description: Port local agent configuration safely between Claude, Codex, OpenClaw, Qwen, Kimi, and neutral bundles.
+default_prompt: Inventory my local agent provider configuration and produce a Resonance Report without copying credentials.
+
