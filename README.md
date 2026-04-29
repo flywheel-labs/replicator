@@ -31,3 +31,7 @@ Outputs:
 - `B -> A`: reverse translation, evaluated independently.
 - `A -> C`: source provider to a third ecosystem.
 - `A -> Resonance -> B`: preferred long-term neutral-bundle flow.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
