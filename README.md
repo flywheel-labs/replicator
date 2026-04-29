@@ -25,3 +25,9 @@ Outputs:
 - `.replicator-output/reports/resonance-report.md`
 - `.replicator-output/bundles/resonance-bundle.json`
 
+## Migration Shapes
+
+- `A -> B`: source provider to receiving provider.
+- `B -> A`: reverse translation, evaluated independently.
+- `A -> C`: source provider to a third ecosystem.
+- `A -> Resonance -> B`: preferred long-term neutral-bundle flow.

@@ -50,4 +50,4 @@ python replicator/scripts/replicator.py inventory --providers claude --output .r
 - Read `references/providers.md` when adding or modifying provider adapters.
 - Read `references/artifact-schema.md` when changing report or bundle shape.
 - Read `references/safety-policy.md` before adding any write/sync behavior.
-
+- Read `references/migration-variants.md` when planning A->B, B->A, A->C, or neutral-bundle flows.
