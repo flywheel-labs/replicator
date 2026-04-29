@@ -14,6 +14,14 @@ Initial providers:
 
 Replicator does not copy credentials, overwrite live config, or claim providers are equivalent.
 
+## What's In The Name?
+
+The name comes from the science-fiction cautionary pattern of systems that absorb every useful tool they encounter.
+
+Replicator borrows the energy of that idea but rejects the bad version of it: this project is not meant to assimilate Claude, Codex, OpenClaw, Qwen, Kimi, or any other provider into a lowest-common-denominator blob.
+
+The goal is translation with boundaries. Replicator inventories what exists, preserves provider-specific distinctiveness, identifies what can resonate across ecosystems, and reports what must stay manual.
+
 ## MVP
 
 ```bash
