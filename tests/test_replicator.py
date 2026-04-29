@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from subprocess import run
 
 import sys
 
@@ -10,6 +11,12 @@ import replicator  # noqa: E402
 
 
 class ReplicatorTests(unittest.TestCase):
+    def test_version_flag_reports_v0_1_0(self):
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
+
+        self.assertEqual(result.stdout.strip(), "replicator 0.1.0")
+
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
         artifact_type = replicator.infer_artifact_type(path, replicator.PROVIDERS["claude"])
@@ -52,4 +59,3 @@ class ReplicatorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

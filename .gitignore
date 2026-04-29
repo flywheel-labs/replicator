@@ -1,5 +1,6 @@
 .replicator-output/
 .replicator-output-smoke/
+.replicator-output-v010/
 __pycache__/
 *.pyc
 .pytest_cache/

@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
+VERSION = "0.1.0"
 
 SECRET_MARKERS = (
     "api_key",
@@ -298,6 +299,7 @@ def command_inventory(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
+    parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     inventory = subparsers.add_parser("inventory", help="Inventory provider config safely.")
@@ -319,4 +321,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

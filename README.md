@@ -2,6 +2,8 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
+Current release: `v0.1.0` safe inventory baseline.
+
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
 Initial providers:
@@ -32,6 +34,26 @@ Outputs:
 
 - `.replicator-output/reports/resonance-report.md`
 - `.replicator-output/bundles/resonance-bundle.json`
+
+## v0.1.0 Scope
+
+Replicator v0.1.0 is intentionally read-only.
+
+It can:
+
+- inventory known local provider config locations,
+- classify discovered artifacts,
+- produce a Resonance Report,
+- produce a Resonance Bundle,
+- itemize credentials/session/auth artifacts as not moved.
+
+It does not:
+
+- copy credentials,
+- write live provider config,
+- generate target-provider drafts,
+- sync providers,
+- execute discovered scripts or hooks.
 
 ## Migration Shapes
 
