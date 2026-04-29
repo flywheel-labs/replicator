@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.1.0` safe inventory baseline.
+Current release: `v0.2.0` public-ready inventory baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -35,9 +35,39 @@ Outputs:
 - `.replicator-output/reports/resonance-report.md`
 - `.replicator-output/bundles/resonance-bundle.json`
 
-## v0.1.0 Scope
+## Usage
 
-Replicator v0.1.0 is intentionally read-only.
+Inventory your local provider config:
+
+```bash
+python3 replicator/scripts/replicator.py inventory \
+  --providers claude,codex,openclaw,qwen,kimi \
+  --output .replicator-output
+```
+
+Inventory synthetic fixtures:
+
+```bash
+python3 replicator/scripts/replicator.py inventory \
+  --providers claude,codex,openclaw,qwen,kimi \
+  --root tests/fixtures/home \
+  --output .replicator-output-fixture
+```
+
+Limit scan depth:
+
+```bash
+python3 replicator/scripts/replicator.py inventory \
+  --providers claude,codex \
+  --max-depth 2 \
+  --output .replicator-output
+```
+
+By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
+
+## v0.2.0 Scope
+
+Replicator v0.2.0 is intentionally read-only.
 
 It can:
 
@@ -46,6 +76,9 @@ It can:
 - produce a Resonance Report,
 - produce a Resonance Bundle,
 - itemize credentials/session/auth artifacts as not moved.
+- summarize artifacts by provider, classification, and artifact type,
+- scan synthetic fixture roots for public examples and tests,
+- limit scan depth and skip cache/log/temp/build directories by default.
 
 It does not:
 

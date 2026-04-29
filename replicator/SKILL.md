@@ -45,6 +45,14 @@ Inventory one source provider:
 python replicator/scripts/replicator.py inventory --providers claude --output .replicator-output
 ```
 
+Inventory synthetic fixtures:
+
+```bash
+python replicator/scripts/replicator.py inventory --providers claude,codex,openclaw,qwen,kimi --root tests/fixtures/home --output .replicator-output-fixture
+```
+
+Use `--max-depth` for bounded scans. Cache/log/temp/build directories are skipped by default; use `--include-cache` only when explicitly needed.
+
 ## References
 
 - Read `references/providers.md` when adding or modifying provider adapters.

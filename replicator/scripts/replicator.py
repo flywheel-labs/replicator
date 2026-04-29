@@ -10,7 +10,20 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+
+DEFAULT_EXCLUDED_DIRS = {
+    ".git",
+    ".replicator-output",
+    ".replicator-output-smoke",
+    ".replicator-output-v010",
+    "__pycache__",
+    "cache",
+    "caches",
+    "dist",
+    "node_modules",
+    "target",
+}
 
 SECRET_MARKERS = (
     "api_key",
@@ -46,6 +59,14 @@ class Artifact:
     reason: str
     target_notes: str
     contains_secret_reference: bool
+
+
+@dataclass(frozen=True)
+class ScanOptions:
+    root_override: Path | None = None
+    max_depth: int | None = None
+    include_hidden: bool = True
+    ignore_cache: bool = True
 
 
 PROVIDERS: dict[str, ProviderSpec] = {
@@ -92,8 +113,11 @@ PROVIDERS: dict[str, ProviderSpec] = {
 }
 
 
-def expand_path(raw: str) -> Path:
-    return Path(os.path.expandvars(os.path.expanduser(raw)))
+def expand_path(raw: str, root_override: Path | None = None) -> Path:
+    expanded = Path(os.path.expandvars(os.path.expanduser(raw)))
+    if root_override is not None and raw.startswith("~/"):
+        return root_override / raw[2:]
+    return expanded
 
 
 def is_secret_path(path: Path) -> bool:
@@ -177,27 +201,65 @@ def classify(path: Path, artifact_type: str) -> tuple[str, str, str, bool]:
     )
 
 
-def iter_artifact_paths(root: Path) -> Iterable[Path]:
+def should_skip_dir(path: Path, options: ScanOptions) -> bool:
+    name = path.name
+    lowered = name.lower()
+    if options.ignore_cache and lowered in DEFAULT_EXCLUDED_DIRS:
+        return True
+    if options.ignore_cache and ("cache" in lowered or lowered in {"logs", "tmp", "temp"}):
+        return True
+    if not options.include_hidden and name.startswith("."):
+        return True
+    return False
+
+
+def depth_from_root(root: Path, path: Path) -> int:
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        return 0
+    if str(relative) == ".":
+        return 0
+    return len(relative.parts)
+
+
+def iter_artifact_paths(root: Path, options: ScanOptions | None = None) -> Iterable[Path]:
+    options = options or ScanOptions()
     if not root.exists():
         return
     yield root
     if root.is_file():
         return
     for current, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "target", "__pycache__"}]
         current_path = Path(current)
+        current_depth = depth_from_root(root, current_path)
+        if options.max_depth is not None and current_depth >= options.max_depth:
+            dirs[:] = []
+        else:
+            dirs[:] = [
+                d
+                for d in dirs
+                if not should_skip_dir(current_path / d, options)
+                and (
+                    options.max_depth is None
+                    or depth_from_root(root, current_path / d) <= options.max_depth
+                )
+            ]
         for dirname in dirs:
             yield current_path / dirname
         for filename in files:
+            if not options.include_hidden and filename.startswith("."):
+                continue
             yield current_path / filename
 
 
-def inventory_provider(spec: ProviderSpec) -> list[Artifact]:
+def inventory_provider(spec: ProviderSpec, options: ScanOptions | None = None) -> list[Artifact]:
+    options = options or ScanOptions()
     artifacts: list[Artifact] = []
     seen: set[Path] = set()
     for raw_root in spec.paths:
-        root = expand_path(raw_root)
-        for path in iter_artifact_paths(root) or ():
+        root = expand_path(raw_root, options.root_override)
+        for path in iter_artifact_paths(root, options) or ():
             resolved = path.resolve() if path.exists() else path
             if resolved in seen:
                 continue
@@ -218,13 +280,32 @@ def inventory_provider(spec: ProviderSpec) -> list[Artifact]:
     return artifacts
 
 
+def count_by(items: Iterable[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        counts[item] = counts.get(item, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def summarize_artifacts(artifacts: list[Artifact]) -> dict[str, object]:
+    return {
+        "artifact_count": len(artifacts),
+        "credential_reference_count": sum(1 for artifact in artifacts if artifact.contains_secret_reference),
+        "by_provider": count_by(artifact.provider for artifact in artifacts),
+        "by_classification": count_by(artifact.classification for artifact in artifacts),
+        "by_artifact_type": count_by(artifact.artifact_type for artifact in artifacts),
+    }
+
+
 def write_bundle(output_dir: Path, artifacts: list[Artifact]) -> Path:
     bundle_dir = output_dir / "bundles"
     bundle_dir.mkdir(parents=True, exist_ok=True)
     bundle_path = bundle_dir / "resonance-bundle.json"
     payload = {
         "schema": "replicator.resonance_bundle.v1",
+        "replicator_version": VERSION,
         "artifact_count": len(artifacts),
+        "summary": summarize_artifacts(artifacts),
         "artifacts": [asdict(artifact) for artifact in artifacts],
     }
     bundle_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -243,6 +324,8 @@ def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
     lines = [
         "# Replicator Resonance Report",
         "",
+        f"Replicator version: `{VERSION}`",
+        "",
         "Replicator inventories provider configuration and classifies migration safety.",
         "",
         "No credentials, tokens, session files, or API keys were copied.",
@@ -251,6 +334,18 @@ def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
         "",
         f"- Artifacts found: {len(artifacts)}",
         f"- Credential/manual auth items not moved: {sum(1 for a in artifacts if a.contains_secret_reference)}",
+        "",
+        "### By Provider",
+        "",
+        *[f"- `{key}`: {value}" for key, value in summarize_artifacts(artifacts)["by_provider"].items()],
+        "",
+        "### By Classification",
+        "",
+        *[f"- `{key}`: {value}" for key, value in summarize_artifacts(artifacts)["by_classification"].items()],
+        "",
+        "### By Artifact Type",
+        "",
+        *[f"- `{key}`: {value}" for key, value in summarize_artifacts(artifacts)["by_artifact_type"].items()],
         "",
     ]
 
@@ -286,14 +381,21 @@ def parse_providers(value: str) -> list[ProviderSpec]:
 def command_inventory(args: argparse.Namespace) -> int:
     specs = parse_providers(args.providers)
     output_dir = Path(args.output)
+    options = ScanOptions(
+        root_override=Path(args.root).expanduser() if args.root else None,
+        max_depth=args.max_depth,
+        include_hidden=args.include_hidden,
+        ignore_cache=not args.include_cache,
+    )
     artifacts: list[Artifact] = []
     for spec in specs:
-        artifacts.extend(inventory_provider(spec))
+        artifacts.extend(inventory_provider(spec, options))
     bundle_path = write_bundle(output_dir, artifacts)
     report_path = write_report(output_dir, artifacts)
     print(f"Wrote Resonance Report: {report_path}")
     print(f"Wrote Resonance Bundle: {bundle_path}")
     print(f"Artifacts: {len(artifacts)}")
+    print(f"Credential/manual auth items not moved: {sum(1 for a in artifacts if a.contains_secret_reference)}")
     return 0
 
 
@@ -309,6 +411,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated provider list.",
     )
     inventory.add_argument("--output", default=".replicator-output", help="Output directory.")
+    inventory.add_argument(
+        "--root",
+        default=None,
+        help="Optional home/root override for fixtures or offline inventories. Applies to ~/ provider paths.",
+    )
+    inventory.add_argument(
+        "--max-depth",
+        type=int,
+        default=None,
+        help="Maximum directory depth to scan below each provider root.",
+    )
+    inventory.add_argument(
+        "--include-cache",
+        action="store_true",
+        help="Include cache/log/temp/build directories that are skipped by default.",
+    )
+    inventory.add_argument(
+        "--include-hidden",
+        action="store_true",
+        default=True,
+        help="Include hidden files and directories. This is the default for provider config discovery.",
+    )
+    inventory.add_argument(
+        "--exclude-hidden",
+        action="store_false",
+        dest="include_hidden",
+        help="Exclude hidden files and directories below provider roots.",
+    )
     inventory.set_defaults(func=command_inventory)
     return parser
 
