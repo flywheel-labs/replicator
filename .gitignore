@@ -1,8 +1,11 @@
 .replicator-output/
 .replicator-output-fixture/
+.replicator-output-anthropic-skills/
 .replicator-output-smoke/
 .replicator-output-v010/
 .replicator-output-v020/
+.replicator-external-fixtures/
+.external-sources/
 __pycache__/
 *.pyc
 .pytest_cache/
