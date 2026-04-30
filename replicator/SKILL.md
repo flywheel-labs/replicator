@@ -79,7 +79,15 @@ Stage generated drafts into an isolated provider-like root:
 python replicator/scripts/replicator.py stage --draft .replicator-drafts --to codex --staging-root .replicator-stage --json
 ```
 
-Current baseline: v0.9.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`.
+Install generated drafts into an explicit live root with backup safeguards:
+
+```bash
+python replicator/scripts/replicator.py install --draft .replicator-drafts --to codex --live-root ~/.codex --json
+```
+
+Use `--force` only when replacing existing files. Replicator does not infer live roots; callers must pass `--live-root` explicitly.
+
+Current baseline: v0.10.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`.
 
 ## References
 

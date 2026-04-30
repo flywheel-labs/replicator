@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.9.0` staging baseline.
+Current release: `v0.10.0` guarded install baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -88,6 +88,18 @@ python replicator/scripts/replicator.py stage \
   --json
 ```
 
+Install generated drafts into an explicit live root with backup safeguards:
+
+```bash
+python replicator/scripts/replicator.py install \
+  --draft .replicator-drafts \
+  --to codex \
+  --live-root ~/.codex \
+  --json
+```
+
+Use `--force` only when replacing existing files. Existing files are backed up under `<live-root>/replicator-backups/<timestamp>/` before replacement.
+
 ## Usage
 
 Inventory your local provider config:
@@ -118,9 +130,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.9.0 Scope
+## v0.10.0 Scope
 
-Replicator v0.9.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, and JSON status is opt-in.
+Replicator v0.10.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
 
 It can:
 
@@ -152,6 +164,10 @@ It can:
 - stage generated skill drafts into an isolated provider-like directory,
 - write `stage-manifest.json`,
 - report staged file counts and simple staged-skill discovery results.
+- install generated skill drafts into an explicit live provider root,
+- refuse to replace existing files unless `--force` is used,
+- back up replaced files before forced replacement,
+- write `replicator-install-manifest.json`.
 
 It does not:
 
@@ -159,8 +175,8 @@ It does not:
 - write live provider config,
 - sync providers,
 - execute discovered scripts or hooks.
-- install generated drafts into `~/.codex`.
-- install generated drafts into `~/.claude`.
+- infer or auto-select `~/.codex` or `~/.claude`.
+- install credentials, sessions, MCP config, plugins, hooks, or scripts.
 - translate MCP servers, plugins, hooks, or scripts.
 
 ## Migration Shapes

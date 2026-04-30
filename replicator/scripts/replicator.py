@@ -19,6 +19,7 @@ from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
 from replicator.compare import compare_bundles, write_comparison
 from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
+from replicator.install import install_draft
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
 from replicator.status import print_json_status, status_payload
@@ -388,6 +389,37 @@ def command_stage(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_install(args: argparse.Namespace) -> int:
+    target = args.to.lower()
+    manifest = install_draft(Path(args.draft), Path(args.live_root), target, force=args.force)
+    data = {
+        "target_provider": target,
+        "manifest_path": manifest["manifest_path"],
+        "live_root": manifest["live_root"],
+        "backup_root": manifest["backup_root"],
+        "installed_count": manifest["installed_count"],
+        "skipped_count": manifest["skipped_count"],
+        "discovery": manifest["discovery"],
+        "safety": manifest["safety"],
+    }
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Draft install completed.",
+                command="install",
+                data=data,
+            )
+        )
+        return 0
+    print(f"Wrote Install Manifest: {manifest['manifest_path']}")
+    print(f"Live root: {manifest['live_root']}")
+    print(f"Backup root: {manifest['backup_root']}")
+    print(f"Installed files: {manifest['installed_count']}")
+    print(f"Skipped files: {manifest['skipped_count']}")
+    print(f"Discovery passed: {str(manifest['discovery']['passed']).lower()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -462,6 +494,14 @@ def build_parser() -> argparse.ArgumentParser:
     stage.add_argument("--staging-root", required=True, help="Isolated staging root. Live provider config is never used by default.")
     stage.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     stage.set_defaults(func=command_stage)
+
+    install = subparsers.add_parser("install", help="Install generated drafts into an explicit live root with backup safeguards.")
+    install.add_argument("--draft", required=True, help="Draft root, such as .replicator-drafts/codex or .replicator-drafts.")
+    install.add_argument("--to", required=True, choices=sorted(SUPPORTED_STAGE_TARGETS), help="Target provider to install.")
+    install.add_argument("--live-root", required=True, help="Explicit provider config root to write. No default live root is inferred.")
+    install.add_argument("--force", action="store_true", help="Replace existing files after backing them up.")
+    install.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    install.set_defaults(func=command_install)
     return parser
 
 

@@ -28,6 +28,9 @@
 .replicator-drafts-v090-fixture/
 .replicator-stage/
 .replicator-stage-v090-fixture/
+.replicator-output-v0100-fixture/
+.replicator-drafts-v0100-fixture/
+.replicator-install-v0100-fixture/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

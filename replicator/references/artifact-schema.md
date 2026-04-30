@@ -131,3 +131,29 @@ Stage manifest schema:
 - `skipped`
 
 Staging must not write live provider config directories unless a future explicit install command adds backup/restore safeguards.
+
+## Install Manifest
+
+Guarded install writes:
+
+- `<live-root>/replicator-install-manifest.json`
+- `<live-root>/skills/<skill-name>/SKILL.md`
+- `<live-root>/skills/<skill-name>/MIGRATION_NOTES.md` when notes exist
+- `<live-root>/replicator-backups/<timestamp>/...` for replaced files when `--force` is used
+
+Install manifest schema:
+
+- `schema`: `replicator.install_manifest.v1`
+- `target_provider`
+- `draft_root`
+- `live_root`
+- `backup_root`
+- `force`
+- `installed_count`
+- `skipped_count`
+- `discovery`
+- `safety`
+- `installed`
+- `skipped`
+
+Install requires an explicit live root. Replicator must not infer `~/.codex`, `~/.claude`, or any other live provider path by default.
