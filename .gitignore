@@ -31,6 +31,10 @@
 .replicator-output-v0100-fixture/
 .replicator-drafts-v0100-fixture/
 .replicator-install-v0100-fixture/
+.replicator-output-v0110-qwen/
+.replicator-drafts-v0110-qwen/
+.replicator-output-v0110-kimi/
+.replicator-drafts-v0110-kimi/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

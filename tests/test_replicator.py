@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_10_0(self):
+    def test_version_flag_reports_v0_11_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.10.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.11.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.10.0")
+        self.assertEqual(bundle["replicator_version"], "0.11.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -208,6 +208,80 @@ class ReplicatorTests(unittest.TestCase):
             self.assertEqual(manifest["target_provider"], "claude")
             self.assertEqual(manifest["generated_count"], 1)
             self.assertIn("Target provider: `claude`", notes_text)
+
+    def test_generate_codex_draft_from_qwen_command_markdown(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        options = replicator_cli.ScanOptions(root_override=root)
+        artifacts = replicator_cli.inventory_provider(adapters.PROVIDERS["qwen"], options)
+
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            bundle_path = replicator_cli.write_bundle(temp_path / "bundle", artifacts, options)
+            results = drafts.generate_codex_drafts(bundle_path, temp_path / "drafts", source_provider="qwen")
+            draft_skill = temp_path / "drafts" / "codex" / "skills" / "summary" / "SKILL.md"
+            draft_notes = temp_path / "drafts" / "codex" / "skills" / "summary" / "MIGRATION_NOTES.md"
+            manifest = __import__("json").loads(
+                (temp_path / "drafts" / "codex" / "manifest.json").read_text(encoding="utf-8")
+            )
+            draft_text = draft_skill.read_text(encoding="utf-8")
+
+            self.assertTrue(draft_skill.is_file())
+            self.assertTrue(draft_notes.is_file())
+            self.assertEqual(sum(1 for result in results if result.status == "generated"), 1)
+            self.assertEqual(manifest["source_provider"], "qwen")
+            self.assertEqual(manifest["generated_count"], 1)
+            self.assertIn("converted by Replicator", draft_text)
+            self.assertIn("Provider: `qwen`", draft_text)
+
+    def test_generate_command_supports_from_provider(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            inventory_output = temp_path / "inventory"
+            draft_output = temp_path / "drafts"
+            run(
+                [
+                    sys.executable,
+                    str(script),
+                    "inventory",
+                    "--providers",
+                    "kimi",
+                    "--root",
+                    str(root),
+                    "--output",
+                    str(inventory_output),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "generate",
+                    "--from-bundle",
+                    str(inventory_output / "bundles" / "resonance-bundle.json"),
+                    "--from-provider",
+                    "kimi",
+                    "--to",
+                    "codex",
+                    "--output",
+                    str(draft_output),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            draft_skill = draft_output / "codex" / "skills" / "research" / "SKILL.md"
+
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["data"]["source_provider"], "kimi")
+            self.assertEqual(payload["data"]["generated_count"], 1)
+            self.assertTrue(draft_skill.is_file())
 
     def test_generate_command_writes_manifest(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"

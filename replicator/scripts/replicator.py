@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
 from replicator.compare import compare_bundles, write_comparison
-from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
+from replicator.drafts import SUPPORTED_SOURCES, SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.install import install_draft
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
@@ -298,15 +298,18 @@ def command_inventory(args: argparse.Namespace) -> int:
 
 def command_generate(args: argparse.Namespace) -> int:
     target = args.to.lower()
+    source = args.from_provider.lower() if args.from_provider else ("claude" if target == "codex" else "codex")
     if target not in SUPPORTED_TARGETS:
         raise SystemExit(f"Unsupported target provider for draft generation: {args.to}")
+    if source not in SUPPORTED_SOURCES:
+        raise SystemExit(f"Unsupported source provider for draft generation: {source}")
 
     bundle_path = Path(args.from_bundle)
     output_dir = Path(args.output)
     if target == "codex":
-        results = generate_codex_drafts(bundle_path, output_dir)
+        results = generate_codex_drafts(bundle_path, output_dir, source_provider=source)
     elif target == "claude":
-        results = generate_claude_drafts(bundle_path, output_dir)
+        results = generate_claude_drafts(bundle_path, output_dir, source_provider=source)
     else:
         raise SystemExit(f"Unsupported target provider for draft generation: {args.to}")
 
@@ -319,6 +322,7 @@ def command_generate(args: argparse.Namespace) -> int:
                 message="Draft generation completed.",
                 command="generate",
                 data={
+                    "source_provider": source,
                     "target_provider": target,
                     "manifest_path": str(manifest_path),
                     "generated_count": generated,
@@ -328,6 +332,7 @@ def command_generate(args: argparse.Namespace) -> int:
         )
         return 0
     print(f"Wrote {target} draft manifest: {manifest_path}")
+    print(f"Source provider: {source}")
     print(f"Generated drafts: {generated}")
     print(f"Skipped artifacts: {skipped}")
     return 0
@@ -475,6 +480,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=sorted(SUPPORTED_TARGETS),
         help="Target provider for generated drafts.",
+    )
+    generate.add_argument(
+        "--from-provider",
+        choices=sorted(SUPPORTED_SOURCES),
+        default=None,
+        help="Source provider to generate from. Defaults to claude for codex targets and codex for claude targets.",
     )
     generate.add_argument("--output", default=".replicator-drafts", help="Draft output directory.")
     generate.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")

@@ -67,6 +67,12 @@ Draft generation must not write to live provider config directories by default.
 
 Draft generation must not copy credentials, session files, API keys, OAuth files, hooks, executable scripts, or provider cache data.
 
+Draft generation sources:
+
+- Claude/Codex `SKILL.md` artifacts are copied into draft skill directories.
+- Qwen command markdown, Kimi prompt markdown, and OpenClaw agent markdown are wrapped into target-provider `SKILL.md` drafts with source metadata.
+- The `--from-provider` option selects the source provider; the target provider is still selected with `--to`.
+
 ## Comparison Outputs
 
 Bundle comparison writes:

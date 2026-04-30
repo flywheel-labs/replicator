@@ -59,6 +59,12 @@ Generate Codex drafts from a Resonance Bundle:
 python replicator/scripts/replicator.py generate --from-bundle .replicator-output/bundles/resonance-bundle.json --to codex --output .replicator-drafts
 ```
 
+Generate drafts from another provider's command/prompt markdown:
+
+```bash
+python replicator/scripts/replicator.py generate --from-bundle .replicator-output-qwen/bundles/resonance-bundle.json --from-provider qwen --to codex --output .replicator-drafts
+```
+
 Generate Claude drafts from a Resonance Bundle:
 
 ```bash
@@ -87,7 +93,7 @@ python replicator/scripts/replicator.py install --draft .replicator-drafts --to 
 
 Use `--force` only when replacing existing files. Replicator does not infer live roots; callers must pass `--live-root` explicitly.
 
-Current baseline: v0.10.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`.
+Current baseline: v0.11.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`.
 
 ## References
 

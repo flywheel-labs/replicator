@@ -12,6 +12,7 @@ from typing import Any
 from replicator.schema import validate_bundle_payload
 
 
+SUPPORTED_SOURCES = {"claude", "codex", "kimi", "openclaw", "qwen"}
 SUPPORTED_TARGETS = {"claude", "codex"}
 
 
@@ -39,13 +40,49 @@ def load_bundle(path: Path) -> dict[str, Any]:
     return payload
 
 
-def is_skill_entry(artifact: dict[str, Any], source_provider: str) -> bool:
+def is_portable_prompt_entry(artifact: dict[str, Any], source_provider: str) -> bool:
+    path = str(artifact.get("path", "")).replace("\\", "/")
     return (
         artifact.get("provider") == source_provider
         and artifact.get("artifact_type") == "skill_or_prompt"
         and artifact.get("classification") == "portable_with_edits"
         and artifact.get("contains_secret_reference") is False
-        and str(artifact.get("path", "")).replace("\\", "/").endswith("/SKILL.md")
+        and Path(path).suffix.lower() in {".md", ".txt"}
+    )
+
+
+def is_skill_file(path: Path) -> bool:
+    return path.name == "SKILL.md"
+
+
+def target_skill_name(source_path: Path) -> str:
+    if is_skill_file(source_path):
+        return slugify_skill_name(source_path.parent.name)
+    return slugify_skill_name(source_path.stem)
+
+
+def converted_prompt_content(artifact: dict[str, Any], source_path: Path) -> str:
+    source_text = source_path.read_text(encoding="utf-8")
+    title = source_path.stem.replace("_", " ").replace("-", " ").strip().title() or "Migrated Instructions"
+    return "\n".join(
+        [
+            f"# {title}",
+            "",
+            "This draft was converted by Replicator from a source-provider command, prompt, or agent markdown file.",
+            "",
+            "Review provider-specific assumptions before installing it into live config.",
+            "",
+            "## Source",
+            "",
+            f"- Provider: `{artifact.get('provider')}`",
+            f"- Path: `{artifact.get('path')}`",
+            f"- Artifact ID: `{artifact.get('artifact_id')}`",
+            "",
+            "## Instructions",
+            "",
+            source_text,
+            "",
+        ]
     )
 
 
@@ -97,6 +134,11 @@ def generate_skill_drafts(
     source_provider: str,
     target_provider: str,
 ) -> list[DraftResult]:
+    if source_provider not in SUPPORTED_SOURCES:
+        raise ValueError(f"unsupported source provider: {source_provider}")
+    if target_provider not in SUPPORTED_TARGETS:
+        raise ValueError(f"unsupported target provider: {target_provider}")
+
     payload = load_bundle(bundle_path)
     draft_root = output_dir / target_provider / "skills"
     draft_root.mkdir(parents=True, exist_ok=True)
@@ -104,7 +146,7 @@ def generate_skill_drafts(
     results: list[DraftResult] = []
     for artifact in payload["artifacts"]:
         source_path = Path(str(artifact.get("path", "")))
-        if not is_skill_entry(artifact, source_provider):
+        if not is_portable_prompt_entry(artifact, source_provider):
             results.append(
                 DraftResult(
                     artifact_id=str(artifact.get("artifact_id", "")),
@@ -113,7 +155,7 @@ def generate_skill_drafts(
                     target_provider=target_provider,
                     target_path="",
                     status="skipped",
-                    reason=f"Only portable {source_provider} SKILL.md artifacts are generated for {target_provider}.",
+                    reason=f"Only portable {source_provider} markdown/text skill or prompt artifacts are generated for {target_provider}.",
                 )
             )
             continue
@@ -132,13 +174,16 @@ def generate_skill_drafts(
             )
             continue
 
-        skill_name = slugify_skill_name(source_path.parent.name)
+        skill_name = target_skill_name(source_path)
         target_skill_dir = draft_root / skill_name
         target_skill_dir.mkdir(parents=True, exist_ok=True)
         target_skill_path = target_skill_dir / "SKILL.md"
         target_notes_path = target_skill_dir / "MIGRATION_NOTES.md"
 
-        shutil.copyfile(source_path, target_skill_path)
+        if is_skill_file(source_path):
+            shutil.copyfile(source_path, target_skill_path)
+        else:
+            target_skill_path.write_text(converted_prompt_content(artifact, source_path), encoding="utf-8")
         target_notes_path.write_text(migration_notes(artifact, target_provider, target_skill_path), encoding="utf-8")
         results.append(
             DraftResult(
@@ -148,7 +193,7 @@ def generate_skill_drafts(
                 target_provider=target_provider,
                 target_path=str(target_skill_path),
                 status="generated",
-                reason=f"Generated {target_provider} skill draft from {source_provider} SKILL.md.",
+                reason=f"Generated {target_provider} skill draft from {source_provider} skill/prompt artifact.",
             )
         )
 
@@ -166,20 +211,29 @@ def generate_skill_drafts(
     return results
 
 
-def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResult]:
+def generate_codex_drafts(
+    bundle_path: Path,
+    output_dir: Path,
+    *,
+    source_provider: str = "claude",
+) -> list[DraftResult]:
     return generate_skill_drafts(
         bundle_path,
         output_dir,
-        source_provider="claude",
+        source_provider=source_provider,
         target_provider="codex",
     )
 
 
-def generate_claude_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResult]:
+def generate_claude_drafts(
+    bundle_path: Path,
+    output_dir: Path,
+    *,
+    source_provider: str = "codex",
+) -> list[DraftResult]:
     return generate_skill_drafts(
         bundle_path,
         output_dir,
-        source_provider="codex",
+        source_provider=source_provider,
         target_provider="claude",
     )
-
