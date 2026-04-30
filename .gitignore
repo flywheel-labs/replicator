@@ -4,6 +4,8 @@
 .replicator-output-smoke/
 .replicator-output-v010/
 .replicator-output-v020/
+.replicator-output-v030-fixture/
+.replicator-output-v030-anthropic-skills/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

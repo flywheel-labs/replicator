@@ -1,26 +1,41 @@
 import tempfile
 import unittest
+import importlib.util
 from pathlib import Path
 from subprocess import run
 
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "replicator" / "scripts"))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 
-import replicator  # noqa: E402
+from replicator import adapters  # noqa: E402
+
+
+def load_cli_module():
+    script = REPO_ROOT / "replicator" / "scripts" / "replicator.py"
+    spec = importlib.util.spec_from_file_location("replicator_cli", script)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_2_0(self):
+    def test_version_flag_reports_v0_3_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.2.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.3.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
-        artifact_type = replicator.infer_artifact_type(path, replicator.PROVIDERS["claude"])
-        classification, reason, target_notes, contains_secret = replicator.classify(path, artifact_type)
+        artifact_type = adapters.infer_artifact_type(path, adapters.PROVIDERS["claude"])
+        classification, reason, target_notes, contains_secret = adapters.classify(path, artifact_type)
 
         self.assertEqual(artifact_type, "credential_reference")
         self.assertEqual(classification, "not_portable")
@@ -30,16 +45,22 @@ class ReplicatorTests(unittest.TestCase):
 
     def test_mcp_configs_are_portable_with_edits(self):
         path = Path("/tmp/.codex/mcp/settings.json")
-        artifact_type = replicator.infer_artifact_type(path, replicator.PROVIDERS["codex"])
-        classification, _, target_notes, contains_secret = replicator.classify(path, artifact_type)
+        artifact_type = adapters.infer_artifact_type(path, adapters.PROVIDERS["codex"])
+        classification, _, target_notes, contains_secret = adapters.classify(path, artifact_type)
 
         self.assertEqual(artifact_type, "mcp_config")
         self.assertEqual(classification, "portable_with_edits")
         self.assertFalse(contains_secret)
         self.assertIn("verify", target_notes.lower())
 
+    def test_skill_named_mcp_builder_is_still_a_skill(self):
+        path = Path("/tmp/.claude/skills/mcp-builder/SKILL.md")
+        artifact_type = adapters.infer_artifact_type(path, adapters.PROVIDERS["claude"])
+
+        self.assertEqual(artifact_type, "skill_or_prompt")
+
     def test_report_itemizes_credentials_not_moved(self):
-        artifact = replicator.Artifact(
+        artifact = replicator_cli.Artifact(
             provider="claude",
             path="/tmp/.claude/oauth.json",
             artifact_type="credential_reference",
@@ -49,7 +70,7 @@ class ReplicatorTests(unittest.TestCase):
             contains_secret_reference=True,
         )
         with tempfile.TemporaryDirectory() as temp:
-            report_path = replicator.write_report(Path(temp), [artifact])
+            report_path = replicator_cli.write_report(Path(temp), [artifact])
             report = report_path.read_text(encoding="utf-8")
 
         self.assertIn("No credentials", report)
@@ -59,12 +80,12 @@ class ReplicatorTests(unittest.TestCase):
 
     def test_fixture_inventory_covers_all_initial_providers_safely(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"
-        options = replicator.ScanOptions(root_override=root)
+        options = replicator_cli.ScanOptions(root_override=root)
         artifacts = []
         for provider in ("claude", "codex", "openclaw", "qwen", "kimi"):
-            artifacts.extend(replicator.inventory_provider(replicator.PROVIDERS[provider], options))
+            artifacts.extend(replicator_cli.inventory_provider(adapters.PROVIDERS[provider], options))
 
-        summary = replicator.summarize_artifacts(artifacts)
+        summary = replicator_cli.summarize_artifacts(artifacts)
 
         self.assertEqual(set(summary["by_provider"]), {"claude", "codex", "openclaw", "qwen", "kimi"})
         self.assertGreaterEqual(summary["by_classification"].get("portable_with_edits", 0), 3)
@@ -73,13 +94,13 @@ class ReplicatorTests(unittest.TestCase):
 
     def test_max_depth_limits_nested_artifacts(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"
-        options = replicator.ScanOptions(root_override=root, max_depth=1)
-        artifacts = replicator.inventory_provider(replicator.PROVIDERS["claude"], options)
+        options = replicator_cli.ScanOptions(root_override=root, max_depth=1)
+        artifacts = replicator_cli.inventory_provider(adapters.PROVIDERS["claude"], options)
 
         self.assertFalse(any("SKILL.md" in artifact.path for artifact in artifacts))
 
     def test_bundle_includes_summary_and_version(self):
-        artifact = replicator.Artifact(
+        artifact = replicator_cli.Artifact(
             provider="codex",
             path="/tmp/.codex/skills/demo/SKILL.md",
             artifact_type="skill_or_prompt",
@@ -89,10 +110,10 @@ class ReplicatorTests(unittest.TestCase):
             contains_secret_reference=False,
         )
         with tempfile.TemporaryDirectory() as temp:
-            bundle_path = replicator.write_bundle(Path(temp), [artifact])
+            bundle_path = replicator_cli.write_bundle(Path(temp), [artifact])
             bundle = __import__("json").loads(bundle_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(bundle["replicator_version"], "0.2.0")
+        self.assertEqual(bundle["replicator_version"], "0.3.0")
         self.assertEqual(bundle["summary"]["by_classification"], {"portable_with_edits": 1})
 
 

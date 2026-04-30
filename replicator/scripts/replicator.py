@@ -6,11 +6,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-VERSION = "0.2.0"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from replicator import __version__ as VERSION
+from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
 
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
@@ -24,31 +30,6 @@ DEFAULT_EXCLUDED_DIRS = {
     "node_modules",
     "target",
 }
-
-SECRET_MARKERS = (
-    "api_key",
-    "apikey",
-    "auth",
-    "credential",
-    "credentials",
-    "keychain",
-    "oauth",
-    "refresh_token",
-    "secret",
-    "session",
-    "token",
-)
-
-
-@dataclass(frozen=True)
-class ProviderSpec:
-    name: str
-    display_name: str
-    paths: tuple[str, ...]
-    skill_markers: tuple[str, ...] = ()
-    plugin_markers: tuple[str, ...] = ()
-    mcp_markers: tuple[str, ...] = ()
-
 
 @dataclass(frozen=True)
 class Artifact:
@@ -69,136 +50,11 @@ class ScanOptions:
     ignore_cache: bool = True
 
 
-PROVIDERS: dict[str, ProviderSpec] = {
-    "claude": ProviderSpec(
-        name="claude",
-        display_name="Claude Code",
-        paths=("~/.claude", "~/.claude.json"),
-        skill_markers=("skills", "skill"),
-        plugin_markers=("plugins", "plugin"),
-        mcp_markers=("mcp",),
-    ),
-    "codex": ProviderSpec(
-        name="codex",
-        display_name="OpenAI Codex",
-        paths=("~/.codex",),
-        skill_markers=("skills", "skill"),
-        plugin_markers=("plugins", "plugin"),
-        mcp_markers=("mcp",),
-    ),
-    "openclaw": ProviderSpec(
-        name="openclaw",
-        display_name="OpenClaw",
-        paths=("~/.openclaw",),
-        skill_markers=("skills", "skill", "agents"),
-        plugin_markers=("plugins", "plugin"),
-        mcp_markers=("mcp",),
-    ),
-    "qwen": ProviderSpec(
-        name="qwen",
-        display_name="Qwen Code",
-        paths=("~/.qwen", "~/.qwen-code", "~/.config/qwen"),
-        skill_markers=("commands", "skills", "agents"),
-        plugin_markers=("extensions", "plugins"),
-        mcp_markers=("mcp",),
-    ),
-    "kimi": ProviderSpec(
-        name="kimi",
-        display_name="Kimi / Moonshot",
-        paths=("~/.kimi", "~/.moonshot", "~/.config/kimi", "~/.config/moonshot"),
-        skill_markers=("prompts", "skills", "agents"),
-        plugin_markers=("plugins", "extensions"),
-        mcp_markers=("mcp",),
-    ),
-}
-
-
 def expand_path(raw: str, root_override: Path | None = None) -> Path:
     expanded = Path(os.path.expandvars(os.path.expanduser(raw)))
     if root_override is not None and raw.startswith("~/"):
         return root_override / raw[2:]
     return expanded
-
-
-def is_secret_path(path: Path) -> bool:
-    lowered = str(path).lower()
-    return any(marker in lowered for marker in SECRET_MARKERS)
-
-
-def infer_artifact_type(path: Path, spec: ProviderSpec) -> str:
-    lowered_parts = tuple(part.lower() for part in path.parts)
-    name = path.name.lower()
-
-    if is_secret_path(path):
-        return "credential_reference"
-    if any(marker in lowered_parts or marker in name for marker in spec.mcp_markers):
-        return "mcp_config"
-    if any(marker in lowered_parts or marker in name for marker in spec.skill_markers):
-        return "skill_or_prompt"
-    if any(marker in lowered_parts or marker in name for marker in spec.plugin_markers):
-        return "plugin_or_extension"
-    if name in {"settings.json", "config.json", "config.toml", "settings.toml"}:
-        return "provider_settings"
-    if path.suffix.lower() in {".md", ".txt"}:
-        return "instruction_or_memory"
-    if path.suffix.lower() in {".json", ".toml", ".yaml", ".yml"}:
-        return "structured_config"
-    if path.is_dir():
-        return "config_directory"
-    return "unknown"
-
-
-def classify(path: Path, artifact_type: str) -> tuple[str, str, str, bool]:
-    contains_secret = is_secret_path(path)
-
-    if contains_secret:
-        return (
-            "not_portable",
-            "Path appears to contain credentials, auth, session, token, or secret material.",
-            "Recreate this credential manually in the receiving provider.",
-            True,
-        )
-    if artifact_type == "mcp_config":
-        return (
-            "portable_with_edits",
-            "MCP definitions are often portable, but command paths, env names, and permission models need review.",
-            "Generate a draft and verify paths, env vars, and tool trust boundaries.",
-            False,
-        )
-    if artifact_type == "skill_or_prompt":
-        return (
-            "portable_with_edits",
-            "Skill/prompt instructions can usually be translated, but trigger semantics and bundled resources differ.",
-            "Convert into the receiving provider's skill format and review instructions.",
-            False,
-        )
-    if artifact_type == "plugin_or_extension":
-        return (
-            "manual_review",
-            "Executable/plugin behavior is provider-specific and may have a different security model.",
-            "Inspect manually before creating a receiving-provider draft.",
-            False,
-        )
-    if artifact_type in {"instruction_or_memory", "structured_config", "provider_settings"}:
-        return (
-            "manual_review",
-            "Configuration may be useful, but provider semantics differ.",
-            "Review and copy only provider-agnostic instructions.",
-            False,
-        )
-    if artifact_type == "config_directory":
-        return (
-            "manual_review",
-            "Directory is a discovery root or nested config folder.",
-            "Review child artifacts instead of copying the directory wholesale.",
-            False,
-        )
-    return (
-        "manual_review",
-        "Unknown artifact type.",
-        "Review manually before migration.",
-        False,
-    )
 
 
 def should_skip_dir(path: Path, options: ScanOptions) -> bool:

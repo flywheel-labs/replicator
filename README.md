@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.2.0` public-ready inventory baseline.
+Current release: `v0.3.0` adapter architecture baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -65,9 +65,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.2.0 Scope
+## v0.3.0 Scope
 
-Replicator v0.2.0 is intentionally read-only.
+Replicator v0.3.0 is intentionally read-only.
 
 It can:
 
@@ -79,6 +79,8 @@ It can:
 - summarize artifacts by provider, classification, and artifact type,
 - scan synthetic fixture roots for public examples and tests,
 - limit scan depth and skip cache/log/temp/build directories by default.
+- classify through provider adapter rules instead of monolithic CLI logic,
+- prefer skill context over path substrings, so a skill named `mcp-builder` is still classified as a skill.
 
 It does not:
 
