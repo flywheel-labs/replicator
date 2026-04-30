@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
+from replicator.compare import compare_bundles, write_comparison
 from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 
@@ -295,6 +296,20 @@ def command_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_compare(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+    comparison = compare_bundles(Path(args.left), Path(args.right))
+    report_path, json_path = write_comparison(output_dir, comparison)
+    print(f"Wrote Comparison Report: {report_path}")
+    print(f"Wrote Comparison JSON: {json_path}")
+    print(f"Items compared: {comparison['summary']['item_count']}")
+    print(f"Overlaps: {comparison['summary']['overlap_count']}")
+    print(f"Left-only: {comparison['summary']['left_only_count']}")
+    print(f"Right-only: {comparison['summary']['right_only_count']}")
+    print(f"Manual-only: {comparison['summary']['manual_only_count']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -351,6 +366,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     generate.add_argument("--output", default=".replicator-drafts", help="Draft output directory.")
     generate.set_defaults(func=command_generate)
+
+    compare = subparsers.add_parser("compare", help="Compare two Resonance Bundles.")
+    compare.add_argument("--left", required=True, help="Left/source resonance-bundle.json.")
+    compare.add_argument("--right", required=True, help="Right/target resonance-bundle.json.")
+    compare.add_argument("--output", default=".replicator-compare", help="Comparison output directory.")
+    compare.set_defaults(func=command_compare)
     return parser
 
 

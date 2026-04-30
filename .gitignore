@@ -18,6 +18,10 @@
 .replicator-drafts-v060-fixture-codex/
 .replicator-drafts-v060-fixture-claude/
 .replicator-drafts-v060-anthropic-skills/
+.replicator-output-v070-left/
+.replicator-output-v070-right/
+.replicator-compare/
+.replicator-compare-v070-fixture/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.6.0` round-trip draft baseline.
+Current release: `v0.7.0` comparison baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -59,6 +59,15 @@ python replicator/scripts/replicator.py generate \
   --output .replicator-drafts
 ```
 
+Compare two Resonance Bundles:
+
+```bash
+python replicator/scripts/replicator.py compare \
+  --left .replicator-output-claude/bundles/resonance-bundle.json \
+  --right .replicator-output-codex/bundles/resonance-bundle.json \
+  --output .replicator-compare
+```
+
 ## Usage
 
 Inventory your local provider config:
@@ -89,9 +98,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.6.0 Scope
+## v0.7.0 Scope
 
-Replicator v0.6.0 remains conservative. Inventory is read-only, and generation writes drafts only to an output directory.
+Replicator v0.7.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, and comparison writes reports only to an output directory.
 
 It can:
 
@@ -114,6 +123,8 @@ It can:
 - generate Claude skill drafts from portable Codex `SKILL.md` artifacts,
 - write migration notes for each generated draft,
 - write a draft manifest that records generated and skipped artifacts.
+- compare two Resonance Bundles,
+- report overlaps, left-only gaps, right-only gaps, and manual-only credential items.
 
 It does not:
 

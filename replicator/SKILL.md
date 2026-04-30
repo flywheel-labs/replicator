@@ -65,7 +65,13 @@ Generate Claude drafts from a Resonance Bundle:
 python replicator/scripts/replicator.py generate --from-bundle .replicator-output/bundles/resonance-bundle.json --to claude --output .replicator-drafts
 ```
 
-Current baseline: v0.6.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config.
+Compare two Resonance Bundles:
+
+```bash
+python replicator/scripts/replicator.py compare --left .replicator-output-claude/bundles/resonance-bundle.json --right .replicator-output-codex/bundles/resonance-bundle.json --output .replicator-compare
+```
+
+Current baseline: v0.7.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`.
 
 ## References
 

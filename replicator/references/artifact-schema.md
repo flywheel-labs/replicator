@@ -66,3 +66,26 @@ Current generated files:
 Draft generation must not write to live provider config directories by default.
 
 Draft generation must not copy credentials, session files, API keys, OAuth files, hooks, executable scripts, or provider cache data.
+
+## Comparison Outputs
+
+Bundle comparison writes:
+
+- `reports/comparison-report.md`
+- `bundles/comparison.json`
+
+Comparison schema:
+
+- `schema`: `replicator.comparison.v1`
+- `left_bundle`
+- `right_bundle`
+- `summary`
+- `items`
+
+Comparison item statuses:
+
+- `overlap`
+- `left_only`
+- `right_only`
+- `manual_only_left`
+- `manual_only_right`
