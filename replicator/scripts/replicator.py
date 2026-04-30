@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
+from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
@@ -153,17 +154,25 @@ def summarize_artifacts(artifacts: list[Artifact]) -> dict[str, object]:
     }
 
 
-def write_bundle(output_dir: Path, artifacts: list[Artifact]) -> Path:
+def write_bundle(
+    output_dir: Path,
+    artifacts: list[Artifact],
+    options: ScanOptions | None = None,
+) -> Path:
+    options = options or ScanOptions()
     bundle_dir = output_dir / "bundles"
     bundle_dir.mkdir(parents=True, exist_ok=True)
     bundle_path = bundle_dir / "resonance-bundle.json"
-    payload = {
-        "schema": "replicator.resonance_bundle.v1",
-        "replicator_version": VERSION,
-        "artifact_count": len(artifacts),
-        "summary": summarize_artifacts(artifacts),
-        "artifacts": [asdict(artifact) for artifact in artifacts],
-    }
+    payload = build_bundle_payload(
+        version=VERSION,
+        artifacts=artifacts,
+        summary=summarize_artifacts(artifacts),
+        root_override=options.root_override,
+        max_depth=options.max_depth,
+        include_hidden=options.include_hidden,
+        ignore_cache=options.ignore_cache,
+    )
+    validate_bundle_payload(payload)
     bundle_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return bundle_path
 
@@ -191,6 +200,13 @@ def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
         f"- Artifacts found: {len(artifacts)}",
         f"- Credential/manual auth items not moved: {sum(1 for a in artifacts if a.contains_secret_reference)}",
         "",
+        "### Schema",
+        "",
+        "- Bundle schema: `replicator.resonance_bundle.v1`",
+        "- Stable artifact IDs: enabled",
+        "- Non-secret file checksums: enabled",
+        "- Secret checksums: skipped",
+        "",
         "### By Provider",
         "",
         *[f"- `{key}`: {value}" for key, value in summarize_artifacts(artifacts)["by_provider"].items()],
@@ -213,6 +229,7 @@ def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
                 [
                     f"### `{artifact.path}`",
                     "",
+                    f"- Artifact ID: `{stable_artifact_id(artifact.provider, artifact.path, artifact.artifact_type)}`",
                     f"- Type: `{artifact.artifact_type}`",
                     f"- Classification: `{artifact.classification}`",
                     f"- Credential reference: `{str(artifact.contains_secret_reference).lower()}`",
@@ -246,7 +263,7 @@ def command_inventory(args: argparse.Namespace) -> int:
     artifacts: list[Artifact] = []
     for spec in specs:
         artifacts.extend(inventory_provider(spec, options))
-    bundle_path = write_bundle(output_dir, artifacts)
+    bundle_path = write_bundle(output_dir, artifacts, options)
     report_path = write_report(output_dir, artifacts)
     print(f"Wrote Resonance Report: {report_path}")
     print(f"Wrote Resonance Bundle: {bundle_path}")

@@ -53,7 +53,7 @@ python replicator/scripts/replicator.py inventory --providers claude,codex,openc
 
 Use `--max-depth` for bounded scans. Cache/log/temp/build directories are skipped by default; use `--include-cache` only when explicitly needed.
 
-Current baseline: v0.3.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior.
+Current baseline: v0.4.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`.
 
 ## References
 

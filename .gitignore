@@ -6,6 +6,8 @@
 .replicator-output-v020/
 .replicator-output-v030-fixture/
 .replicator-output-v030-anthropic-skills/
+.replicator-output-v040-fixture/
+.replicator-output-v040-anthropic-skills/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/
