@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.11.0` command and prompt draft baseline.
+Current release: `v0.12.0` MCP draft baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -59,6 +59,8 @@ Draft outputs:
 - `.replicator-drafts/codex/manifest.json`
 - `.replicator-drafts/codex/skills/<skill-name>/SKILL.md`
 - `.replicator-drafts/codex/skills/<skill-name>/MIGRATION_NOTES.md`
+- `.replicator-drafts/codex/mcp/<config-name>/<config-file>`
+- `.replicator-drafts/codex/mcp/<config-name>/MIGRATION_NOTES.md`
 
 Generate Claude drafts from a Resonance Bundle:
 
@@ -140,9 +142,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.11.0 Scope
+## v0.12.0 Scope
 
-Replicator v0.11.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
+Replicator v0.12.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
 
 It can:
 
@@ -164,6 +166,7 @@ It can:
 - generate Codex skill drafts from portable Claude `SKILL.md` artifacts,
 - generate Claude skill drafts from portable Codex `SKILL.md` artifacts,
 - generate target skill drafts from portable Qwen command markdown, Kimi prompt markdown, and OpenClaw agent markdown,
+- generate MCP config drafts with migration notes,
 - select the generation source provider with `--from-provider`,
 - write migration notes for each generated draft,
 - write a draft manifest that records generated and skipped artifacts.
@@ -189,7 +192,8 @@ It does not:
 - execute discovered scripts or hooks.
 - infer or auto-select `~/.codex` or `~/.claude`.
 - install credentials, sessions, MCP config, plugins, hooks, or scripts.
-- translate MCP servers, plugins, hooks, or scripts.
+- execute, install, or validate MCP servers.
+- translate plugins, hooks, or scripts.
 
 ## Migration Shapes
 

@@ -35,6 +35,10 @@
 .replicator-drafts-v0110-qwen/
 .replicator-output-v0110-kimi/
 .replicator-drafts-v0110-kimi/
+.replicator-output-v0120-claude/
+.replicator-drafts-v0120-claude/
+.replicator-output-v0120-codex/
+.replicator-drafts-v0120-codex/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

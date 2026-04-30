@@ -51,6 +51,17 @@ def is_portable_prompt_entry(artifact: dict[str, Any], source_provider: str) -> 
     )
 
 
+def is_portable_mcp_entry(artifact: dict[str, Any], source_provider: str) -> bool:
+    path = str(artifact.get("path", "")).replace("\\", "/")
+    return (
+        artifact.get("provider") == source_provider
+        and artifact.get("artifact_type") == "mcp_config"
+        and artifact.get("classification") == "portable_with_edits"
+        and artifact.get("contains_secret_reference") is False
+        and Path(path).suffix.lower() in {".json", ".toml", ".yaml", ".yml"}
+    )
+
+
 def is_skill_file(path: Path) -> bool:
     return path.name == "SKILL.md"
 
@@ -127,6 +138,45 @@ def migration_notes(artifact: dict[str, Any], target_provider: str, target_path:
     )
 
 
+def target_mcp_name(source_path: Path) -> str:
+    return f"{slugify_skill_name(source_path.stem)}{source_path.suffix.lower()}"
+
+
+def mcp_migration_notes(artifact: dict[str, Any], target_provider: str, target_path: Path) -> str:
+    checksum = artifact.get("checksum_sha256") or "not available"
+    checksum_status = artifact.get("checksum_status") or "unknown"
+    return "\n".join(
+        [
+            "# MCP Migration Notes",
+            "",
+            "This MCP config draft was copied by Replicator for manual review.",
+            "",
+            "Replicator does not execute MCP commands, install servers, validate executable paths, or copy credentials.",
+            "",
+            "## Source",
+            "",
+            f"- Source provider: `{artifact.get('provider')}`",
+            f"- Source path: `{artifact.get('path')}`",
+            f"- Artifact ID: `{artifact.get('artifact_id')}`",
+            f"- Checksum status: `{checksum_status}`",
+            f"- SHA-256: `{checksum}`",
+            "",
+            "## Target",
+            "",
+            f"- Target provider: `{target_provider}`",
+            f"- Draft path: `{target_path}`",
+            "",
+            "## Manual Review Checklist",
+            "",
+            "- Verify command paths exist on this machine.",
+            "- Recreate required environment variables and credentials manually.",
+            "- Confirm the receiving provider supports the same MCP shape.",
+            "- Test the server in an isolated session before installing it globally.",
+            "",
+        ]
+    )
+
+
 def generate_skill_drafts(
     bundle_path: Path,
     output_dir: Path,
@@ -140,60 +190,96 @@ def generate_skill_drafts(
         raise ValueError(f"unsupported target provider: {target_provider}")
 
     payload = load_bundle(bundle_path)
-    draft_root = output_dir / target_provider / "skills"
-    draft_root.mkdir(parents=True, exist_ok=True)
+    skill_draft_root = output_dir / target_provider / "skills"
+    mcp_draft_root = output_dir / target_provider / "mcp"
+    skill_draft_root.mkdir(parents=True, exist_ok=True)
+    mcp_draft_root.mkdir(parents=True, exist_ok=True)
 
     results: list[DraftResult] = []
     for artifact in payload["artifacts"]:
         source_path = Path(str(artifact.get("path", "")))
-        if not is_portable_prompt_entry(artifact, source_provider):
-            results.append(
-                DraftResult(
-                    artifact_id=str(artifact.get("artifact_id", "")),
-                    source_provider=str(artifact.get("provider", "")),
-                    source_path=str(artifact.get("path", "")),
-                    target_provider=target_provider,
-                    target_path="",
-                    status="skipped",
-                    reason=f"Only portable {source_provider} markdown/text skill or prompt artifacts are generated for {target_provider}.",
+        if is_portable_prompt_entry(artifact, source_provider):
+            if not source_path.is_file():
+                results.append(
+                    DraftResult(
+                        artifact_id=str(artifact.get("artifact_id", "")),
+                        source_provider=source_provider,
+                        source_path=str(source_path),
+                        target_provider=target_provider,
+                        target_path="",
+                        status="skipped",
+                        reason="Source skill/prompt file is not readable from this machine.",
+                    )
                 )
-            )
-            continue
+                continue
 
-        if not source_path.is_file():
+            skill_name = target_skill_name(source_path)
+            target_skill_dir = skill_draft_root / skill_name
+            target_skill_dir.mkdir(parents=True, exist_ok=True)
+            target_skill_path = target_skill_dir / "SKILL.md"
+            target_notes_path = target_skill_dir / "MIGRATION_NOTES.md"
+
+            if is_skill_file(source_path):
+                shutil.copyfile(source_path, target_skill_path)
+            else:
+                target_skill_path.write_text(converted_prompt_content(artifact, source_path), encoding="utf-8")
+            target_notes_path.write_text(migration_notes(artifact, target_provider, target_skill_path), encoding="utf-8")
             results.append(
                 DraftResult(
                     artifact_id=str(artifact.get("artifact_id", "")),
                     source_provider=source_provider,
                     source_path=str(source_path),
                     target_provider=target_provider,
-                    target_path="",
-                    status="skipped",
-                    reason="Source SKILL.md file is not readable from this machine.",
+                    target_path=str(target_skill_path),
+                    status="generated",
+                    reason=f"Generated {target_provider} skill draft from {source_provider} skill/prompt artifact.",
                 )
             )
             continue
 
-        skill_name = target_skill_name(source_path)
-        target_skill_dir = draft_root / skill_name
-        target_skill_dir.mkdir(parents=True, exist_ok=True)
-        target_skill_path = target_skill_dir / "SKILL.md"
-        target_notes_path = target_skill_dir / "MIGRATION_NOTES.md"
+        if is_portable_mcp_entry(artifact, source_provider):
+            if not source_path.is_file():
+                results.append(
+                    DraftResult(
+                        artifact_id=str(artifact.get("artifact_id", "")),
+                        source_provider=source_provider,
+                        source_path=str(source_path),
+                        target_provider=target_provider,
+                        target_path="",
+                        status="skipped",
+                        reason="Source MCP config file is not readable from this machine.",
+                    )
+                )
+                continue
 
-        if is_skill_file(source_path):
-            shutil.copyfile(source_path, target_skill_path)
-        else:
-            target_skill_path.write_text(converted_prompt_content(artifact, source_path), encoding="utf-8")
-        target_notes_path.write_text(migration_notes(artifact, target_provider, target_skill_path), encoding="utf-8")
+            target_mcp_dir = mcp_draft_root / slugify_skill_name(source_path.stem)
+            target_mcp_dir.mkdir(parents=True, exist_ok=True)
+            target_mcp_path = target_mcp_dir / target_mcp_name(source_path)
+            target_notes_path = target_mcp_dir / "MIGRATION_NOTES.md"
+            shutil.copyfile(source_path, target_mcp_path)
+            target_notes_path.write_text(mcp_migration_notes(artifact, target_provider, target_mcp_path), encoding="utf-8")
+            results.append(
+                DraftResult(
+                    artifact_id=str(artifact.get("artifact_id", "")),
+                    source_provider=source_provider,
+                    source_path=str(source_path),
+                    target_provider=target_provider,
+                    target_path=str(target_mcp_path),
+                    status="generated",
+                    reason=f"Generated {target_provider} MCP draft from {source_provider} MCP config.",
+                )
+            )
+            continue
+
         results.append(
             DraftResult(
                 artifact_id=str(artifact.get("artifact_id", "")),
-                source_provider=source_provider,
-                source_path=str(source_path),
+                source_provider=str(artifact.get("provider", "")),
+                source_path=str(artifact.get("path", "")),
                 target_provider=target_provider,
-                target_path=str(target_skill_path),
-                status="generated",
-                reason=f"Generated {target_provider} skill draft from {source_provider} skill/prompt artifact.",
+                target_path="",
+                status="skipped",
+                reason=f"Only portable {source_provider} skill/prompt and MCP artifacts are generated for {target_provider}.",
             )
         )
 

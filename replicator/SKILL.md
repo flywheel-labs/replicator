@@ -93,7 +93,9 @@ python replicator/scripts/replicator.py install --draft .replicator-drafts --to 
 
 Use `--force` only when replacing existing files. Replicator does not infer live roots; callers must pass `--live-root` explicitly.
 
-Current baseline: v0.11.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`.
+Current baseline: v0.12.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`.
+
+MCP drafts are copied for manual review only. Replicator does not execute MCP commands, install MCP servers, validate executable paths, or copy credentials.
 
 ## References
 

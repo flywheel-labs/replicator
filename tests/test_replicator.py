@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_11_0(self):
+    def test_version_flag_reports_v0_12_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.11.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.12.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.11.0")
+        self.assertEqual(bundle["replicator_version"], "0.12.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -179,11 +179,34 @@ class ReplicatorTests(unittest.TestCase):
 
             self.assertTrue(draft_skill.is_file())
             self.assertTrue(draft_notes.is_file())
-            self.assertEqual(sum(1 for result in results if result.status == "generated"), 1)
+            self.assertEqual(sum(1 for result in results if result.status == "generated"), 2)
             self.assertGreaterEqual(manifest["skipped_count"], 1)
-            self.assertEqual(manifest["generated_count"], 1)
+            self.assertEqual(manifest["generated_count"], 2)
             self.assertIn("Artifact ID:", notes_text)
             self.assertNotIn("oauth.json", notes_text.lower())
+
+    def test_generate_codex_mcp_draft_from_fixture_claude_mcp(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        options = replicator_cli.ScanOptions(root_override=root)
+        artifacts = replicator_cli.inventory_provider(adapters.PROVIDERS["claude"], options)
+
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            bundle_path = replicator_cli.write_bundle(temp_path / "bundle", artifacts, options)
+            results = drafts.generate_codex_drafts(bundle_path, temp_path / "drafts")
+            draft_mcp = temp_path / "drafts" / "codex" / "mcp" / "mcp" / "mcp.json"
+            draft_notes = temp_path / "drafts" / "codex" / "mcp" / "mcp" / "MIGRATION_NOTES.md"
+            manifest = __import__("json").loads(
+                (temp_path / "drafts" / "codex" / "manifest.json").read_text(encoding="utf-8")
+            )
+            notes_text = draft_notes.read_text(encoding="utf-8")
+
+            self.assertTrue(draft_mcp.is_file())
+            self.assertTrue(draft_notes.is_file())
+            self.assertEqual(sum(1 for result in results if result.status == "generated"), 2)
+            self.assertEqual(manifest["generated_count"], 2)
+            self.assertIn("does not execute MCP commands", notes_text)
+            self.assertIn("Recreate required environment variables", notes_text)
 
     def test_generate_claude_draft_from_fixture_codex_skill(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"
@@ -323,7 +346,7 @@ class ReplicatorTests(unittest.TestCase):
                 check=True,
             )
 
-        self.assertIn("Generated drafts: 1", result.stdout)
+        self.assertIn("Generated drafts: 2", result.stdout)
         self.assertIn("Skipped artifacts:", result.stdout)
 
     def test_generate_command_supports_claude_target(self):

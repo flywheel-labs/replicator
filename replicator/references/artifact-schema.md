@@ -59,9 +59,13 @@ Current generated files:
 - `codex/manifest.json`
 - `codex/skills/<skill-name>/SKILL.md`
 - `codex/skills/<skill-name>/MIGRATION_NOTES.md`
+- `codex/mcp/<config-name>/<config-file>`
+- `codex/mcp/<config-name>/MIGRATION_NOTES.md`
 - `claude/manifest.json`
 - `claude/skills/<skill-name>/SKILL.md`
 - `claude/skills/<skill-name>/MIGRATION_NOTES.md`
+- `claude/mcp/<config-name>/<config-file>`
+- `claude/mcp/<config-name>/MIGRATION_NOTES.md`
 
 Draft generation must not write to live provider config directories by default.
 
@@ -71,6 +75,7 @@ Draft generation sources:
 
 - Claude/Codex `SKILL.md` artifacts are copied into draft skill directories.
 - Qwen command markdown, Kimi prompt markdown, and OpenClaw agent markdown are wrapped into target-provider `SKILL.md` drafts with source metadata.
+- MCP config files are copied to target-provider MCP draft directories with migration notes.
 - The `--from-provider` option selects the source provider; the target provider is still selected with `--to`.
 
 ## Comparison Outputs
