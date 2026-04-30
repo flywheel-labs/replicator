@@ -9,7 +9,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from replicator import adapters, compare, drafts, install, schema, stage  # noqa: E402
+from replicator import adapters, compare, doctor, drafts, install, schema, stage, workflows  # noqa: E402
 
 
 def load_cli_module():
@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_12_0(self):
+    def test_version_flag_reports_v0_13_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.12.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.13.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.12.0")
+        self.assertEqual(bundle["replicator_version"], "0.13.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -747,6 +747,103 @@ class ReplicatorTests(unittest.TestCase):
             self.assertEqual(payload["data"]["target_provider"], "codex")
             self.assertTrue(payload["data"]["discovery"]["passed"])
             self.assertTrue(installed_skill.is_file())
+
+    def test_doctor_payload_reports_readiness(self):
+        with tempfile.TemporaryDirectory() as temp:
+            payload = doctor.doctor_payload(Path(temp), Path(__file__).resolve().parent / "fixtures" / "home")
+
+        self.assertEqual(payload["schema"], "replicator.doctor.v1")
+        self.assertIn("python", payload["checks"])
+        self.assertTrue(payload["checks"]["output_directory"]["writable"])
+        self.assertTrue(payload["checks"]["fixtures"]["available"])
+
+    def test_doctor_command_json_status(self):
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "doctor"
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "doctor",
+                    "--output",
+                    str(output),
+                    "--fixture-root",
+                    str(Path(__file__).resolve().parent / "fixtures" / "home"),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            report = output / "doctor-report.md"
+
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["command"], "doctor")
+            self.assertTrue(report.is_file())
+            self.assertIn("doctor", payload["data"])
+
+    def test_workflow_payload_lists_presets(self):
+        payload = workflows.workflow_payload()
+        named = workflows.workflow_payload("claude-to-codex-draft")
+
+        self.assertEqual(payload["schema"], "replicator.workflow.v1")
+        self.assertIn("claude-to-codex-draft", payload["available"])
+        self.assertFalse(named["workflow"]["writes_live_config"])
+        self.assertEqual(named["workflow"]["steps"][0]["command"], "inventory")
+
+    def test_workflow_command_json_status(self):
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "workflow"
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "workflow",
+                    "--name",
+                    "codex-to-claude-draft",
+                    "--output",
+                    str(output),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            report = output / "workflow-report.md"
+
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["command"], "workflow")
+            self.assertTrue(report.is_file())
+            self.assertEqual(payload["data"]["workflow"]["name"], "codex-to-claude-draft")
+
+    def test_contract_command_writes_contract(self):
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "contract"
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "contract",
+                    "--output",
+                    str(output),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            contract = output / "command-contract.md"
+
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["command"], "contract")
+            self.assertTrue(contract.is_file())
+            self.assertIn("Replicator Command Contract", contract.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

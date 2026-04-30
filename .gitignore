@@ -39,6 +39,12 @@
 .replicator-drafts-v0120-claude/
 .replicator-output-v0120-codex/
 .replicator-drafts-v0120-codex/
+.replicator-doctor/
+.replicator-workflows/
+.replicator-contract/
+.replicator-doctor-v0130/
+.replicator-workflows-v0130/
+.replicator-contract-v0130/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

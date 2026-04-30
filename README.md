@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.12.0` MCP draft baseline.
+Current release: `v0.13.0` ACC workflow contract baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -90,6 +90,14 @@ python replicator/scripts/replicator.py inventory \
   --json
 ```
 
+Run readiness checks and write command contract docs:
+
+```bash
+python replicator/scripts/replicator.py doctor --json
+python replicator/scripts/replicator.py workflow --name claude-to-codex-draft --json
+python replicator/scripts/replicator.py contract --json
+```
+
 Stage generated drafts into an isolated provider-like root:
 
 ```bash
@@ -142,9 +150,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.12.0 Scope
+## v0.13.0 Scope
 
-Replicator v0.12.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
+Replicator v0.13.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
 
 It can:
 
@@ -183,6 +191,9 @@ It can:
 - refuse to replace existing files unless `--force` is used,
 - back up replaced files before forced replacement,
 - write `replicator-install-manifest.json`.
+- run readiness checks with `doctor`,
+- expose safe workflow presets with `workflow`,
+- write app-facing command contract docs with `contract`.
 
 It does not:
 

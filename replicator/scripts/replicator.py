@@ -18,11 +18,13 @@ if str(REPO_ROOT) not in sys.path:
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
 from replicator.compare import compare_bundles, write_comparison
+from replicator.doctor import doctor_payload, render_doctor_report
 from replicator.drafts import SUPPORTED_SOURCES, SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.install import install_draft
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
 from replicator.status import print_json_status, status_payload
+from replicator.workflows import render_workflow_report, workflow_payload, write_contract
 
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
@@ -425,6 +427,71 @@ def command_install(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_doctor(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = doctor_payload(output_dir, Path(args.fixture_root) if args.fixture_root else None)
+    report_path = output_dir / "doctor-report.md"
+    report_path.write_text(render_doctor_report(payload), encoding="utf-8")
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Doctor completed.",
+                command="doctor",
+                data={
+                    "report_path": str(report_path),
+                    "doctor": payload,
+                },
+            )
+        )
+        return 0
+    print(f"Wrote Doctor Report: {report_path}")
+    print(f"Overall OK: {str(payload['ok']).lower()}")
+    return 0
+
+
+def command_workflow(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = workflow_payload(args.name)
+    report_path = output_dir / "workflow-report.md"
+    report_path.write_text(render_workflow_report(payload), encoding="utf-8")
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Workflow plan generated.",
+                command="workflow",
+                data={
+                    "report_path": str(report_path),
+                    "workflow": payload,
+                },
+            )
+        )
+        return 0
+    print(f"Wrote Workflow Report: {report_path}")
+    if args.name:
+        print(f"Workflow: {args.name}")
+    else:
+        print("Workflow: all")
+    return 0
+
+
+def command_contract(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+    path = write_contract(output_dir)
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Command contract written.",
+                command="contract",
+                data={"contract_path": str(path)},
+            )
+        )
+        return 0
+    print(f"Wrote Command Contract: {path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -513,6 +580,23 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--force", action="store_true", help="Replace existing files after backing them up.")
     install.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     install.set_defaults(func=command_install)
+
+    doctor = subparsers.add_parser("doctor", help="Run local readiness checks for app integrations.")
+    doctor.add_argument("--output", default=".replicator-doctor", help="Doctor output directory.")
+    doctor.add_argument("--fixture-root", default=None, help="Optional fixture root to check.")
+    doctor.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    doctor.set_defaults(func=command_doctor)
+
+    workflow = subparsers.add_parser("workflow", help="Show safe workflow presets for app integrations.")
+    workflow.add_argument("--name", default=None, help="Workflow preset name. Omit to list all presets.")
+    workflow.add_argument("--output", default=".replicator-workflows", help="Workflow output directory.")
+    workflow.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    workflow.set_defaults(func=command_workflow)
+
+    contract = subparsers.add_parser("contract", help="Write machine-readable command contract documentation.")
+    contract.add_argument("--output", default=".replicator-contract", help="Contract output directory.")
+    contract.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    contract.set_defaults(func=command_contract)
     return parser
 
 

@@ -168,3 +168,25 @@ Install manifest schema:
 - `skipped`
 
 Install requires an explicit live root. Replicator must not infer `~/.codex`, `~/.claude`, or any other live provider path by default.
+
+## ACC Integration Outputs
+
+Doctor writes:
+
+- `<output>/doctor-report.md`
+- JSON status data containing `replicator.doctor.v1`
+
+Workflow writes:
+
+- `<output>/workflow-report.md`
+- JSON status data containing `replicator.workflow.v1`
+
+Contract writes:
+
+- `<output>/command-contract.md`
+
+Current workflow presets:
+
+- `inventory-all`
+- `claude-to-codex-draft`
+- `codex-to-claude-draft`
