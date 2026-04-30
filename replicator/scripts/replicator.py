@@ -20,6 +20,7 @@ from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifac
 from replicator.compare import compare_bundles, write_comparison
 from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
+from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
 from replicator.status import print_json_status, status_payload
 
 DEFAULT_EXCLUDED_DIRS = {
@@ -358,6 +359,35 @@ def command_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_stage(args: argparse.Namespace) -> int:
+    target = args.to.lower()
+    manifest = stage_draft(Path(args.draft), Path(args.staging_root), target)
+    data = {
+        "target_provider": target,
+        "manifest_path": manifest["manifest_path"],
+        "staged_provider_root": manifest["staged_provider_root"],
+        "staged_count": manifest["staged_count"],
+        "skipped_count": manifest["skipped_count"],
+        "discovery": manifest["discovery"],
+        "safety": manifest["safety"],
+    }
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Draft staging completed.",
+                command="stage",
+                data=data,
+            )
+        )
+        return 0
+    print(f"Wrote Stage Manifest: {manifest['manifest_path']}")
+    print(f"Staged provider root: {manifest['staged_provider_root']}")
+    print(f"Staged files: {manifest['staged_count']}")
+    print(f"Skipped files: {manifest['skipped_count']}")
+    print(f"Discovery passed: {str(manifest['discovery']['passed']).lower()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -425,6 +455,13 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     compare.add_argument("--compact-report", action="store_true", help="Write summary-only markdown report.")
     compare.set_defaults(func=command_compare)
+
+    stage = subparsers.add_parser("stage", help="Stage generated drafts into an isolated provider-like root.")
+    stage.add_argument("--draft", required=True, help="Draft root, such as .replicator-drafts/codex or .replicator-drafts.")
+    stage.add_argument("--to", required=True, choices=sorted(SUPPORTED_STAGE_TARGETS), help="Target provider to stage.")
+    stage.add_argument("--staging-root", required=True, help="Isolated staging root. Live provider config is never used by default.")
+    stage.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    stage.set_defaults(func=command_stage)
     return parser
 
 

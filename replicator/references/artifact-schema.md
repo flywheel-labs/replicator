@@ -107,3 +107,27 @@ Current stable codes:
 
 - `REP_OK`
 - `REP_ERROR`
+
+## Stage Manifest
+
+Draft staging writes:
+
+- `<staging-root>/<provider>/stage-manifest.json`
+- `<staging-root>/<provider>/skills/<skill-name>/SKILL.md`
+- `<staging-root>/<provider>/skills/<skill-name>/MIGRATION_NOTES.md` when notes exist
+
+Stage manifest schema:
+
+- `schema`: `replicator.stage_manifest.v1`
+- `target_provider`
+- `draft_root`
+- `staging_root`
+- `staged_provider_root`
+- `staged_count`
+- `skipped_count`
+- `discovery`
+- `safety`
+- `staged_files`
+- `skipped`
+
+Staging must not write live provider config directories unless a future explicit install command adds backup/restore safeguards.

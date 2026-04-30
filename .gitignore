@@ -24,6 +24,10 @@
 .replicator-compare-v070-fixture/
 .replicator-output-v080-json/
 .replicator-compare-v080-json/
+.replicator-output-v090-fixture/
+.replicator-drafts-v090-fixture/
+.replicator-stage/
+.replicator-stage-v090-fixture/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

@@ -73,7 +73,13 @@ python replicator/scripts/replicator.py compare --left .replicator-output-claude
 
 Use `--json` on `inventory`, `generate`, and `compare` when an app needs machine-readable status. Use `--compact-report` on `inventory` and `compare` when an app needs lower-volume markdown.
 
-Current baseline: v0.8.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`.
+Stage generated drafts into an isolated provider-like root:
+
+```bash
+python replicator/scripts/replicator.py stage --draft .replicator-drafts --to codex --staging-root .replicator-stage --json
+```
+
+Current baseline: v0.9.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`.
 
 ## References
 

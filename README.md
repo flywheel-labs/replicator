@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.8.0` ACC integration prep baseline.
+Current release: `v0.9.0` staging baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -78,6 +78,16 @@ python replicator/scripts/replicator.py inventory \
   --json
 ```
 
+Stage generated drafts into an isolated provider-like root:
+
+```bash
+python replicator/scripts/replicator.py stage \
+  --draft .replicator-drafts \
+  --to codex \
+  --staging-root .replicator-stage \
+  --json
+```
+
 ## Usage
 
 Inventory your local provider config:
@@ -108,9 +118,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.8.0 Scope
+## v0.9.0 Scope
 
-Replicator v0.8.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, and JSON status is opt-in.
+Replicator v0.9.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, and JSON status is opt-in.
 
 It can:
 
@@ -139,6 +149,9 @@ It can:
 - use stable status schema `replicator.cli_status.v1`,
 - use stable success code `REP_OK`,
 - write compact summary-only markdown reports with `--compact-report`.
+- stage generated skill drafts into an isolated provider-like directory,
+- write `stage-manifest.json`,
+- report staged file counts and simple staged-skill discovery results.
 
 It does not:
 
@@ -147,6 +160,7 @@ It does not:
 - sync providers,
 - execute discovered scripts or hooks.
 - install generated drafts into `~/.codex`.
+- install generated drafts into `~/.claude`.
 - translate MCP servers, plugins, hooks, or scripts.
 
 ## Migration Shapes
