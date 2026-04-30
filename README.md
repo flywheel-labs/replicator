@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.15.0` validation baseline.
+Current release: `v0.16.0` MCP staging baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -167,9 +167,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.15.0 Scope
+## v0.16.0 Scope
 
-Replicator v0.15.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, restore writes only from backup paths recorded in a Replicator install manifest, validation reads only from an explicit provider-like root, and JSON status is opt-in.
+Replicator v0.16.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, restore writes only from backup paths recorded in a Replicator install manifest, validation reads only from an explicit provider-like root, and JSON status is opt-in.
 
 It can:
 
@@ -201,9 +201,9 @@ It can:
 - use stable status schema `replicator.cli_status.v1`,
 - use stable success code `REP_OK`,
 - write compact summary-only markdown reports with `--compact-report`.
-- stage generated skill drafts into an isolated provider-like directory,
+- stage generated skill and MCP drafts into an isolated provider-like directory,
 - write `stage-manifest.json`,
-- report staged file counts and simple staged-skill discovery results.
+- report staged file counts and simple staged-skill/MCP discovery results.
 - install generated skill drafts into an explicit live provider root,
 - refuse to replace existing files unless `--force` is used,
 - back up replaced files before forced replacement,

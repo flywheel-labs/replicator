@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_15_0(self):
+    def test_version_flag_reports_v0_16_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.15.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.16.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.15.0")
+        self.assertEqual(bundle["replicator_version"], "0.16.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -582,6 +582,26 @@ class ReplicatorTests(unittest.TestCase):
             self.assertFalse(manifest["safety"]["live_provider_config_written"])
             self.assertFalse(manifest["safety"]["credentials_copied"])
 
+    def test_stage_draft_copies_mcp_to_isolated_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            draft_mcp_dir = temp_path / "drafts" / "codex" / "mcp" / "demo-server"
+            draft_mcp_dir.mkdir(parents=True)
+            (draft_mcp_dir / "settings.json").write_text('{"command":"demo"}\n', encoding="utf-8")
+            (draft_mcp_dir / "MIGRATION_NOTES.md").write_text("# Notes\n", encoding="utf-8")
+
+            manifest = stage.stage_draft(temp_path / "drafts", temp_path / "stage", "codex")
+            staged_mcp = temp_path / "stage" / "codex" / "mcp" / "demo-server" / "settings.json"
+            staged_notes = temp_path / "stage" / "codex" / "mcp" / "demo-server" / "MIGRATION_NOTES.md"
+
+            self.assertTrue(staged_mcp.is_file())
+            self.assertTrue(staged_notes.is_file())
+            self.assertTrue(manifest["discovery"]["passed"])
+            self.assertEqual(manifest["discovery"]["skill_count"], 0)
+            self.assertEqual(manifest["discovery"]["mcp_count"], 1)
+            self.assertEqual(manifest["discovery"]["mcp"], ["demo-server"])
+            self.assertFalse(manifest["safety"]["scripts_executed"])
+
     def test_stage_command_json_status(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
@@ -647,6 +667,7 @@ class ReplicatorTests(unittest.TestCase):
             self.assertEqual(payload["command"], "stage")
             self.assertEqual(payload["data"]["target_provider"], "codex")
             self.assertTrue(payload["data"]["discovery"]["passed"])
+            self.assertEqual(payload["data"]["discovery"]["mcp_count"], 1)
             self.assertTrue(staged_skill.is_file())
 
     def test_install_draft_skips_existing_without_force_and_backs_up_with_force(self):

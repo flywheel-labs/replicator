@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from replicator.stage import SUPPORTED_STAGE_TARGETS, discover_skill_files
+from replicator.stage import SUPPORTED_STAGE_TARGETS, discover_mcp_files, discover_skill_files
 
 
 @dataclass(frozen=True)
@@ -15,17 +15,6 @@ class ValidationFinding:
     severity: str
     path: str
     message: str
-
-
-def discover_mcp_files(provider_root: Path) -> list[Path]:
-    mcp_root = provider_root / "mcp"
-    if not mcp_root.is_dir():
-        return []
-    files: list[Path] = []
-    for path in sorted(mcp_root.glob("*/*")):
-        if path.is_file() and path.name != "MIGRATION_NOTES.md":
-            files.append(path)
-    return files
 
 
 def _read_json(path: Path, findings: list[ValidationFinding]) -> dict[str, Any] | None:

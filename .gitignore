@@ -51,6 +51,10 @@
 .replicator-drafts-v0150-fixture/
 .replicator-stage-v0150-fixture/
 .replicator-validate-v0150/
+.replicator-output-v0160-fixture/
+.replicator-drafts-v0160-fixture/
+.replicator-stage-v0160-fixture/
+.replicator-validate-v0160/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

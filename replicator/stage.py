@@ -32,6 +32,17 @@ def discover_skill_files(provider_root: Path) -> list[Path]:
     return sorted(skills_root.glob("*/SKILL.md"))
 
 
+def discover_mcp_files(provider_root: Path) -> list[Path]:
+    mcp_root = provider_root / "mcp"
+    if not mcp_root.is_dir():
+        return []
+    return sorted(
+        path
+        for path in mcp_root.glob("*/*")
+        if path.is_file() and path.name != "MIGRATION_NOTES.md"
+    )
+
+
 def stage_draft(draft_root: Path, staging_root: Path, target_provider: str) -> dict[str, object]:
     if target_provider not in SUPPORTED_STAGE_TARGETS:
         raise ValueError(f"unsupported stage target: {target_provider}")
@@ -79,7 +90,36 @@ def stage_draft(draft_root: Path, staging_root: Path, target_provider: str) -> d
             )
         )
 
+    mcp_files = discover_mcp_files(source_provider_root)
+    for source_path in mcp_files:
+        relative_path = source_path.relative_to(source_provider_root)
+        staged_path = staged_provider_root / relative_path
+        staged_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_path, staged_path)
+        staged_files.append(
+            StagedFile(
+                source_path=str(source_path),
+                staged_path=str(staged_path),
+                status="staged",
+                reason="Copied draft MCP config into isolated staging root for manual review.",
+            )
+        )
+
+        notes_path = source_path.parent / "MIGRATION_NOTES.md"
+        if notes_path.is_file():
+            staged_notes_path = staged_path.parent / "MIGRATION_NOTES.md"
+            shutil.copyfile(notes_path, staged_notes_path)
+            staged_files.append(
+                StagedFile(
+                    source_path=str(notes_path),
+                    staged_path=str(staged_notes_path),
+                    status="staged",
+                    reason="Copied draft MCP migration notes into isolated staging root.",
+                )
+            )
+
     discovered_skills = [path.parent.name for path in discover_skill_files(staged_provider_root)]
+    discovered_mcp = [path.parent.name for path in discover_mcp_files(staged_provider_root)]
     manifest = {
         "schema": "replicator.stage_manifest.v1",
         "target_provider": target_provider,
@@ -89,9 +129,11 @@ def stage_draft(draft_root: Path, staging_root: Path, target_provider: str) -> d
         "staged_count": len(staged_files),
         "skipped_count": len(skipped),
         "discovery": {
-            "passed": bool(discovered_skills),
+            "passed": bool(discovered_skills or discovered_mcp),
             "skill_count": len(discovered_skills),
             "skills": discovered_skills,
+            "mcp_count": len(discovered_mcp),
+            "mcp": discovered_mcp,
         },
         "safety": {
             "live_provider_config_written": False,
@@ -106,4 +148,3 @@ def stage_draft(draft_root: Path, staging_root: Path, target_provider: str) -> d
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     manifest["manifest_path"] = str(manifest_path)
     return manifest
-

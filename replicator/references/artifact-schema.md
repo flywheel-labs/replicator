@@ -126,6 +126,8 @@ Draft staging writes:
 - `<staging-root>/<provider>/stage-manifest.json`
 - `<staging-root>/<provider>/skills/<skill-name>/SKILL.md`
 - `<staging-root>/<provider>/skills/<skill-name>/MIGRATION_NOTES.md` when notes exist
+- `<staging-root>/<provider>/mcp/<config-name>/<config-file>`
+- `<staging-root>/<provider>/mcp/<config-name>/MIGRATION_NOTES.md` when notes exist
 
 Stage manifest schema:
 
@@ -142,6 +144,8 @@ Stage manifest schema:
 - `skipped`
 
 Staging must not write live provider config directories unless a future explicit install command adds backup/restore safeguards.
+
+MCP staging is for isolated manual review only. It must not execute MCP commands, install MCP servers, validate executable paths, or copy credentials.
 
 ## Install Manifest
 
