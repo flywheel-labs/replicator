@@ -59,7 +59,13 @@ Generate Codex drafts from a Resonance Bundle:
 python replicator/scripts/replicator.py generate --from-bundle .replicator-output/bundles/resonance-bundle.json --to codex --output .replicator-drafts
 ```
 
-Current baseline: v0.5.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config.
+Generate Claude drafts from a Resonance Bundle:
+
+```bash
+python replicator/scripts/replicator.py generate --from-bundle .replicator-output/bundles/resonance-bundle.json --to claude --output .replicator-drafts
+```
+
+Current baseline: v0.6.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config.
 
 ## References
 

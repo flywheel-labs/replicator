@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.5.0` Claude-to-Codex draft baseline.
+Current release: `v0.6.0` round-trip draft baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -50,6 +50,15 @@ Draft outputs:
 - `.replicator-drafts/codex/skills/<skill-name>/SKILL.md`
 - `.replicator-drafts/codex/skills/<skill-name>/MIGRATION_NOTES.md`
 
+Generate Claude drafts from a Resonance Bundle:
+
+```bash
+python replicator/scripts/replicator.py generate \
+  --from-bundle .replicator-output/bundles/resonance-bundle.json \
+  --to claude \
+  --output .replicator-drafts
+```
+
 ## Usage
 
 Inventory your local provider config:
@@ -80,9 +89,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.5.0 Scope
+## v0.6.0 Scope
 
-Replicator v0.5.0 remains conservative. Inventory is read-only, and generation writes drafts only to an output directory.
+Replicator v0.6.0 remains conservative. Inventory is read-only, and generation writes drafts only to an output directory.
 
 It can:
 
@@ -102,6 +111,7 @@ It can:
 - checksum non-secret files,
 - skip secret checksums and itemize skipped-secret records.
 - generate Codex skill drafts from portable Claude `SKILL.md` artifacts,
+- generate Claude skill drafts from portable Codex `SKILL.md` artifacts,
 - write migration notes for each generated draft,
 - write a draft manifest that records generated and skipped artifacts.
 

@@ -51,6 +51,7 @@ Draft generation consumes a Resonance Bundle and writes provider-specific output
 
 Current draft target:
 
+- `claude`
 - `codex`
 
 Current generated files:
@@ -58,6 +59,9 @@ Current generated files:
 - `codex/manifest.json`
 - `codex/skills/<skill-name>/SKILL.md`
 - `codex/skills/<skill-name>/MIGRATION_NOTES.md`
+- `claude/manifest.json`
+- `claude/skills/<skill-name>/SKILL.md`
+- `claude/skills/<skill-name>/MIGRATION_NOTES.md`
 
 Draft generation must not write to live provider config directories by default.
 

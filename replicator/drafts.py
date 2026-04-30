@@ -12,7 +12,7 @@ from typing import Any
 from replicator.schema import validate_bundle_payload
 
 
-SUPPORTED_TARGETS = {"codex"}
+SUPPORTED_TARGETS = {"claude", "codex"}
 
 
 @dataclass(frozen=True)
@@ -39,9 +39,9 @@ def load_bundle(path: Path) -> dict[str, Any]:
     return payload
 
 
-def is_claude_skill_entry(artifact: dict[str, Any]) -> bool:
+def is_skill_entry(artifact: dict[str, Any], source_provider: str) -> bool:
     return (
-        artifact.get("provider") == "claude"
+        artifact.get("provider") == source_provider
         and artifact.get("artifact_type") == "skill_or_prompt"
         and artifact.get("classification") == "portable_with_edits"
         and artifact.get("contains_secret_reference") is False
@@ -49,7 +49,7 @@ def is_claude_skill_entry(artifact: dict[str, Any]) -> bool:
     )
 
 
-def migration_notes(artifact: dict[str, Any], target_path: Path) -> str:
+def migration_notes(artifact: dict[str, Any], target_provider: str, target_path: Path) -> str:
     checksum = artifact.get("checksum_sha256") or "not available"
     checksum_status = artifact.get("checksum_status") or "unknown"
     return "\n".join(
@@ -70,7 +70,7 @@ def migration_notes(artifact: dict[str, Any], target_path: Path) -> str:
             "",
             "## Target",
             "",
-            "- Target provider: `codex`",
+            f"- Target provider: `{target_provider}`",
             f"- Draft path: `{target_path}`",
             "",
             "## Safety",
@@ -81,33 +81,39 @@ def migration_notes(artifact: dict[str, Any], target_path: Path) -> str:
             "",
             "## Manual Review Checklist",
             "",
-            "- Confirm the instructions make sense for Codex.",
-            "- Remove references to Claude-only commands or assumptions.",
+            f"- Confirm the instructions make sense for {target_provider}.",
+            "- Remove references to source-provider-only commands or assumptions.",
             "- Recreate any required credentials manually in the receiving provider.",
-            "- Test the draft in an isolated Codex session before installing it globally.",
+            f"- Test the draft in an isolated {target_provider} session before installing it globally.",
             "",
         ]
     )
 
 
-def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResult]:
+def generate_skill_drafts(
+    bundle_path: Path,
+    output_dir: Path,
+    *,
+    source_provider: str,
+    target_provider: str,
+) -> list[DraftResult]:
     payload = load_bundle(bundle_path)
-    draft_root = output_dir / "codex" / "skills"
+    draft_root = output_dir / target_provider / "skills"
     draft_root.mkdir(parents=True, exist_ok=True)
 
     results: list[DraftResult] = []
     for artifact in payload["artifacts"]:
         source_path = Path(str(artifact.get("path", "")))
-        if not is_claude_skill_entry(artifact):
+        if not is_skill_entry(artifact, source_provider):
             results.append(
                 DraftResult(
                     artifact_id=str(artifact.get("artifact_id", "")),
                     source_provider=str(artifact.get("provider", "")),
                     source_path=str(artifact.get("path", "")),
-                    target_provider="codex",
+                    target_provider=target_provider,
                     target_path="",
                     status="skipped",
-                    reason="Only portable Claude SKILL.md artifacts are generated in v0.5.0.",
+                    reason=f"Only portable {source_provider} SKILL.md artifacts are generated for {target_provider}.",
                 )
             )
             continue
@@ -116,9 +122,9 @@ def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResu
             results.append(
                 DraftResult(
                     artifact_id=str(artifact.get("artifact_id", "")),
-                    source_provider="claude",
+                    source_provider=source_provider,
                     source_path=str(source_path),
-                    target_provider="codex",
+                    target_provider=target_provider,
                     target_path="",
                     status="skipped",
                     reason="Source SKILL.md file is not readable from this machine.",
@@ -133,23 +139,24 @@ def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResu
         target_notes_path = target_skill_dir / "MIGRATION_NOTES.md"
 
         shutil.copyfile(source_path, target_skill_path)
-        target_notes_path.write_text(migration_notes(artifact, target_skill_path), encoding="utf-8")
+        target_notes_path.write_text(migration_notes(artifact, target_provider, target_skill_path), encoding="utf-8")
         results.append(
             DraftResult(
                 artifact_id=str(artifact.get("artifact_id", "")),
-                source_provider="claude",
+                source_provider=source_provider,
                 source_path=str(source_path),
-                target_provider="codex",
+                target_provider=target_provider,
                 target_path=str(target_skill_path),
                 status="generated",
-                reason="Generated Codex skill draft from Claude SKILL.md.",
+                reason=f"Generated {target_provider} skill draft from {source_provider} SKILL.md.",
             )
         )
 
-    manifest_path = output_dir / "codex" / "manifest.json"
+    manifest_path = output_dir / target_provider / "manifest.json"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
-        "target_provider": "codex",
+        "source_provider": source_provider,
+        "target_provider": target_provider,
         "source_bundle": str(bundle_path),
         "generated_count": sum(1 for result in results if result.status == "generated"),
         "skipped_count": sum(1 for result in results if result.status == "skipped"),
@@ -157,4 +164,22 @@ def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResu
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return results
+
+
+def generate_codex_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResult]:
+    return generate_skill_drafts(
+        bundle_path,
+        output_dir,
+        source_provider="claude",
+        target_provider="codex",
+    )
+
+
+def generate_claude_drafts(bundle_path: Path, output_dir: Path) -> list[DraftResult]:
+    return generate_skill_drafts(
+        bundle_path,
+        output_dir,
+        source_provider="codex",
+        target_provider="claude",
+    )
 

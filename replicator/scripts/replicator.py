@@ -17,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
-from replicator.drafts import SUPPORTED_TARGETS, generate_codex_drafts
+from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 
 DEFAULT_EXCLUDED_DIRS = {
@@ -282,12 +282,14 @@ def command_generate(args: argparse.Namespace) -> int:
     output_dir = Path(args.output)
     if target == "codex":
         results = generate_codex_drafts(bundle_path, output_dir)
+    elif target == "claude":
+        results = generate_claude_drafts(bundle_path, output_dir)
     else:
         raise SystemExit(f"Unsupported target provider for draft generation: {args.to}")
 
     generated = sum(1 for result in results if result.status == "generated")
     skipped = sum(1 for result in results if result.status == "skipped")
-    print(f"Wrote Codex draft manifest: {output_dir / 'codex' / 'manifest.json'}")
+    print(f"Wrote {target} draft manifest: {output_dir / target / 'manifest.json'}")
     print(f"Generated drafts: {generated}")
     print(f"Skipped artifacts: {skipped}")
     return 0
