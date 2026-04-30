@@ -20,6 +20,14 @@ class InstallRecord:
     reason: str
 
 
+@dataclass(frozen=True)
+class RestoreRecord:
+    backup_path: str
+    target_path: str
+    status: str
+    reason: str
+
+
 def backup_root_for(live_root: Path) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return live_root / "replicator-backups" / stamp
@@ -135,3 +143,68 @@ def install_draft(
     manifest["manifest_path"] = str(manifest_path)
     return manifest
 
+
+def restore_install(manifest_path: Path) -> dict[str, object]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schema") != "replicator.install_manifest.v1":
+        raise ValueError(f"unsupported install manifest schema: {manifest.get('schema')}")
+
+    restored: list[RestoreRecord] = []
+    skipped: list[RestoreRecord] = []
+    for item in manifest.get("installed", []):
+        backup_path = item.get("backup_path")
+        target_path = item.get("target_path")
+        if not backup_path:
+            skipped.append(
+                RestoreRecord(
+                    backup_path="",
+                    target_path=str(target_path or ""),
+                    status="skipped",
+                    reason="Installed file did not replace an existing file and has no backup.",
+                )
+            )
+            continue
+
+        backup = Path(backup_path)
+        target = Path(str(target_path))
+        if not backup.is_file():
+            skipped.append(
+                RestoreRecord(
+                    backup_path=str(backup),
+                    target_path=str(target),
+                    status="skipped",
+                    reason="Backup file is missing.",
+                )
+            )
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(backup, target)
+        restored.append(
+            RestoreRecord(
+                backup_path=str(backup),
+                target_path=str(target),
+                status="restored",
+                reason="Restored target from backup file.",
+            )
+        )
+
+    restore_manifest = {
+        "schema": "replicator.restore_manifest.v1",
+        "install_manifest_path": str(manifest_path),
+        "target_provider": manifest.get("target_provider"),
+        "live_root": manifest.get("live_root"),
+        "restored_count": len(restored),
+        "skipped_count": len(skipped),
+        "safety": {
+            "credentials_copied": False,
+            "scripts_executed": False,
+            "restored_only_from_install_manifest_backups": True,
+        },
+        "restored": [asdict(item) for item in restored],
+        "skipped": [asdict(item) for item in skipped],
+    }
+    output_path = manifest_path.parent / "replicator-restore-manifest.json"
+    output_path.write_text(json.dumps(restore_manifest, indent=2) + "\n", encoding="utf-8")
+    restore_manifest["manifest_path"] = str(output_path)
+    return restore_manifest

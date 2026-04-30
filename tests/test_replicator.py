@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_13_0(self):
+    def test_version_flag_reports_v0_14_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.13.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.14.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.13.0")
+        self.assertEqual(bundle["replicator_version"], "0.14.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -681,6 +681,27 @@ class ReplicatorTests(unittest.TestCase):
             self.assertFalse(installed_manifest["safety"]["credentials_copied"])
             self.assertFalse(installed_manifest["safety"]["scripts_executed"])
 
+    def test_restore_install_restores_backed_up_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            draft_skill_dir = temp_path / "drafts" / "codex" / "skills" / "demo"
+            live_skill_dir = temp_path / "live" / "skills" / "demo"
+            draft_skill_dir.mkdir(parents=True)
+            live_skill_dir.mkdir(parents=True)
+            (draft_skill_dir / "SKILL.md").write_text("# New\n", encoding="utf-8")
+            live_skill = live_skill_dir / "SKILL.md"
+            live_skill.write_text("# Existing\n", encoding="utf-8")
+            installed_manifest = install.install_draft(temp_path / "drafts", temp_path / "live", "codex", force=True)
+
+            live_skill.write_text("# Mutated\n", encoding="utf-8")
+            restore_manifest = install.restore_install(Path(installed_manifest["manifest_path"]))
+
+            self.assertEqual(restore_manifest["schema"], "replicator.restore_manifest.v1")
+            self.assertEqual(restore_manifest["restored_count"], 1)
+            self.assertEqual(live_skill.read_text(encoding="utf-8"), "# Existing\n")
+            self.assertFalse(restore_manifest["safety"]["credentials_copied"])
+            self.assertFalse(restore_manifest["safety"]["scripts_executed"])
+
     def test_install_command_json_status(self):
         root = Path(__file__).resolve().parent / "fixtures" / "home"
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
@@ -747,6 +768,39 @@ class ReplicatorTests(unittest.TestCase):
             self.assertEqual(payload["data"]["target_provider"], "codex")
             self.assertTrue(payload["data"]["discovery"]["passed"])
             self.assertTrue(installed_skill.is_file())
+
+    def test_restore_command_json_status(self):
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            draft_skill_dir = temp_path / "drafts" / "codex" / "skills" / "demo"
+            live_skill_dir = temp_path / "live" / "skills" / "demo"
+            draft_skill_dir.mkdir(parents=True)
+            live_skill_dir.mkdir(parents=True)
+            (draft_skill_dir / "SKILL.md").write_text("# New\n", encoding="utf-8")
+            live_skill = live_skill_dir / "SKILL.md"
+            live_skill.write_text("# Existing\n", encoding="utf-8")
+            installed_manifest = install.install_draft(temp_path / "drafts", temp_path / "live", "codex", force=True)
+            live_skill.write_text("# Mutated\n", encoding="utf-8")
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "restore",
+                    "--manifest",
+                    str(installed_manifest["manifest_path"]),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["command"], "restore")
+            self.assertEqual(payload["data"]["restored_count"], 1)
+            self.assertEqual(live_skill.read_text(encoding="utf-8"), "# Existing\n")
 
     def test_doctor_payload_reports_readiness(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.13.0` ACC workflow contract baseline.
+Current release: `v0.14.0` install restore baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -120,6 +120,14 @@ python replicator/scripts/replicator.py install \
 
 Use `--force` only when replacing existing files. Existing files are backed up under `<live-root>/replicator-backups/<timestamp>/` before replacement.
 
+Restore files from an install manifest:
+
+```bash
+python replicator/scripts/replicator.py restore \
+  --manifest ~/.codex/replicator-install-manifest.json \
+  --json
+```
+
 ## Usage
 
 Inventory your local provider config:
@@ -150,9 +158,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.13.0 Scope
+## v0.14.0 Scope
 
-Replicator v0.13.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, and JSON status is opt-in.
+Replicator v0.14.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, restore writes only from backup paths recorded in a Replicator install manifest, and JSON status is opt-in.
 
 It can:
 
@@ -194,6 +202,8 @@ It can:
 - run readiness checks with `doctor`,
 - expose safe workflow presets with `workflow`,
 - write app-facing command contract docs with `contract`.
+- restore files from backup paths recorded in `replicator-install-manifest.json`,
+- write `replicator-restore-manifest.json`.
 
 It does not:
 
@@ -205,6 +215,7 @@ It does not:
 - install credentials, sessions, MCP config, plugins, hooks, or scripts.
 - execute, install, or validate MCP servers.
 - translate plugins, hooks, or scripts.
+- restore from arbitrary backup paths not recorded in a Replicator install manifest.
 
 ## Migration Shapes
 

@@ -169,6 +169,26 @@ Install manifest schema:
 
 Install requires an explicit live root. Replicator must not infer `~/.codex`, `~/.claude`, or any other live provider path by default.
 
+## Restore Manifest
+
+Restore writes:
+
+- `<live-root>/replicator-restore-manifest.json`
+
+Restore manifest schema:
+
+- `schema`: `replicator.restore_manifest.v1`
+- `install_manifest_path`
+- `target_provider`
+- `live_root`
+- `restored_count`
+- `skipped_count`
+- `safety`
+- `restored`
+- `skipped`
+
+Restore reads backup paths only from a Replicator install manifest. Files without recorded backups are skipped.
+
 ## ACC Integration Outputs
 
 Doctor writes:

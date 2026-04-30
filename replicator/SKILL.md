@@ -93,6 +93,12 @@ python replicator/scripts/replicator.py install --draft .replicator-drafts --to 
 
 Use `--force` only when replacing existing files. Replicator does not infer live roots; callers must pass `--live-root` explicitly.
 
+Restore from an install manifest:
+
+```bash
+python replicator/scripts/replicator.py restore --manifest ~/.codex/replicator-install-manifest.json --json
+```
+
 ACC integration helpers:
 
 ```bash
@@ -101,7 +107,7 @@ python replicator/scripts/replicator.py workflow --name claude-to-codex-draft --
 python replicator/scripts/replicator.py contract --json
 ```
 
-Current baseline: v0.13.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install lives in `replicator/install.py`. Readiness checks live in `replicator/doctor.py`; workflow presets and contract docs live in `replicator/workflows.py`.
+Current baseline: v0.14.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`. Isolated staging lives in `replicator/stage.py`. Guarded install and restore live in `replicator/install.py`. Readiness checks live in `replicator/doctor.py`; workflow presets and contract docs live in `replicator/workflows.py`.
 
 MCP drafts are copied for manual review only. Replicator does not execute MCP commands, install MCP servers, validate executable paths, or copy credentials.
 

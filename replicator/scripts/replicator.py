@@ -20,7 +20,7 @@ from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifac
 from replicator.compare import compare_bundles, write_comparison
 from replicator.doctor import doctor_payload, render_doctor_report
 from replicator.drafts import SUPPORTED_SOURCES, SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
-from replicator.install import install_draft
+from replicator.install import install_draft, restore_install
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
 from replicator.status import print_json_status, status_payload
@@ -492,6 +492,32 @@ def command_contract(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_restore(args: argparse.Namespace) -> int:
+    manifest = restore_install(Path(args.manifest))
+    data = {
+        "manifest_path": manifest["manifest_path"],
+        "install_manifest_path": manifest["install_manifest_path"],
+        "target_provider": manifest["target_provider"],
+        "live_root": manifest["live_root"],
+        "restored_count": manifest["restored_count"],
+        "skipped_count": manifest["skipped_count"],
+        "safety": manifest["safety"],
+    }
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Install restore completed.",
+                command="restore",
+                data=data,
+            )
+        )
+        return 0
+    print(f"Wrote Restore Manifest: {manifest['manifest_path']}")
+    print(f"Restored files: {manifest['restored_count']}")
+    print(f"Skipped files: {manifest['skipped_count']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -580,6 +606,11 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--force", action="store_true", help="Replace existing files after backing them up.")
     install.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     install.set_defaults(func=command_install)
+
+    restore = subparsers.add_parser("restore", help="Restore files from a Replicator install manifest backup.")
+    restore.add_argument("--manifest", required=True, help="Path to replicator-install-manifest.json.")
+    restore.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    restore.set_defaults(func=command_restore)
 
     doctor = subparsers.add_parser("doctor", help="Run local readiness checks for app integrations.")
     doctor.add_argument("--output", default=".replicator-doctor", help="Doctor output directory.")

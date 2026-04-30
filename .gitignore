@@ -45,6 +45,7 @@
 .replicator-doctor-v0130/
 .replicator-workflows-v0130/
 .replicator-contract-v0130/
+.replicator-restore-v0140/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/
