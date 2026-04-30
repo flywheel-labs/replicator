@@ -24,6 +24,7 @@ from replicator.install import install_draft, restore_install
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 from replicator.stage import SUPPORTED_STAGE_TARGETS, stage_draft
 from replicator.status import print_json_status, status_payload
+from replicator.validate import render_validation_report, validate_root
 from replicator.workflows import render_workflow_report, workflow_payload, write_contract
 
 DEFAULT_EXCLUDED_DIRS = {
@@ -518,6 +519,32 @@ def command_restore(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_validate(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    validation = validate_root(Path(args.root), args.to.lower())
+    report_path = output_dir / "validation-report.md"
+    report_path.write_text(render_validation_report(validation), encoding="utf-8")
+    data = {
+        "report_path": str(report_path),
+        "validation": validation,
+    }
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Validation completed.",
+                command="validate",
+                data=data,
+            )
+        )
+        return 0
+    print(f"Wrote Validation Report: {report_path}")
+    print(f"Overall OK: {str(validation['ok']).lower()}")
+    print(f"Errors: {validation['summary']['error_count']}")
+    print(f"Warnings: {validation['summary']['warning_count']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -611,6 +638,13 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--manifest", required=True, help="Path to replicator-install-manifest.json.")
     restore.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     restore.set_defaults(func=command_restore)
+
+    validate = subparsers.add_parser("validate", help="Validate a staged or installed provider root without executing anything.")
+    validate.add_argument("--root", required=True, help="Provider-like root to validate.")
+    validate.add_argument("--to", required=True, choices=sorted(SUPPORTED_STAGE_TARGETS), help="Provider layout to validate.")
+    validate.add_argument("--output", default=".replicator-validate", help="Validation output directory.")
+    validate.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    validate.set_defaults(func=command_validate)
 
     doctor = subparsers.add_parser("doctor", help="Run local readiness checks for app integrations.")
     doctor.add_argument("--output", default=".replicator-doctor", help="Doctor output directory.")

@@ -46,6 +46,11 @@
 .replicator-workflows-v0130/
 .replicator-contract-v0130/
 .replicator-restore-v0140/
+.replicator-validate/
+.replicator-output-v0150-fixture/
+.replicator-drafts-v0150-fixture/
+.replicator-stage-v0150-fixture/
+.replicator-validate-v0150/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/

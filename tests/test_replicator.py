@@ -9,7 +9,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from replicator import adapters, compare, doctor, drafts, install, schema, stage, workflows  # noqa: E402
+from replicator import adapters, compare, doctor, drafts, install, schema, stage, validate, workflows  # noqa: E402
 
 
 def load_cli_module():
@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_14_0(self):
+    def test_version_flag_reports_v0_15_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.14.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.15.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.14.0")
+        self.assertEqual(bundle["replicator_version"], "0.15.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -801,6 +801,124 @@ class ReplicatorTests(unittest.TestCase):
             self.assertEqual(payload["command"], "restore")
             self.assertEqual(payload["data"]["restored_count"], 1)
             self.assertEqual(live_skill.read_text(encoding="utf-8"), "# Existing\n")
+
+    def test_validate_root_reports_staged_skill_and_mcp(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            provider_root = temp_path / "stage" / "codex"
+            skill_dir = provider_root / "skills" / "demo"
+            mcp_dir = provider_root / "mcp" / "demo-server"
+            skill_dir.mkdir(parents=True)
+            mcp_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text("# Demo\n", encoding="utf-8")
+            (skill_dir / "MIGRATION_NOTES.md").write_text("# Notes\n", encoding="utf-8")
+            (mcp_dir / "settings.json").write_text('{"command":"demo"}\n', encoding="utf-8")
+            (mcp_dir / "MIGRATION_NOTES.md").write_text("# Notes\n", encoding="utf-8")
+
+            payload = validate.validate_root(provider_root, "codex")
+            report = validate.render_validation_report(payload)
+
+            self.assertEqual(payload["schema"], "replicator.validation.v1")
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["summary"]["skill_count"], 1)
+            self.assertEqual(payload["summary"]["mcp_count"], 1)
+            self.assertFalse(payload["safety"]["scripts_executed"])
+            self.assertIn("Replicator Validation Report", report)
+
+    def test_validate_root_flags_skill_directory_without_skill_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            provider_root = Path(temp) / "codex"
+            (provider_root / "skills" / "broken").mkdir(parents=True)
+
+            payload = validate.validate_root(provider_root, "codex")
+
+            self.assertFalse(payload["ok"])
+            self.assertEqual(payload["summary"]["error_count"], 1)
+            self.assertIn("missing SKILL.md", payload["findings"][0]["message"])
+
+    def test_validate_command_json_status(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            inventory_output = temp_path / "inventory"
+            draft_output = temp_path / "drafts"
+            stage_output = temp_path / "stage"
+            validate_output = temp_path / "validate"
+            run(
+                [
+                    sys.executable,
+                    str(script),
+                    "inventory",
+                    "--providers",
+                    "claude",
+                    "--root",
+                    str(root),
+                    "--output",
+                    str(inventory_output),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            run(
+                [
+                    sys.executable,
+                    str(script),
+                    "generate",
+                    "--from-bundle",
+                    str(inventory_output / "bundles" / "resonance-bundle.json"),
+                    "--to",
+                    "codex",
+                    "--output",
+                    str(draft_output),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            run(
+                [
+                    sys.executable,
+                    str(script),
+                    "stage",
+                    "--draft",
+                    str(draft_output),
+                    "--to",
+                    "codex",
+                    "--staging-root",
+                    str(stage_output),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "validate",
+                    "--root",
+                    str(stage_output / "codex"),
+                    "--to",
+                    "codex",
+                    "--output",
+                    str(validate_output),
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            report = validate_output / "validation-report.md"
+
+            self.assertEqual(payload["schema"], "replicator.cli_status.v1")
+            self.assertEqual(payload["code"], "REP_OK")
+            self.assertEqual(payload["command"], "validate")
+            self.assertTrue(payload["data"]["validation"]["ok"])
+            self.assertEqual(payload["data"]["validation"]["summary"]["skill_count"], 1)
+            self.assertTrue(report.is_file())
 
     def test_doctor_payload_reports_readiness(self):
         with tempfile.TemporaryDirectory() as temp:

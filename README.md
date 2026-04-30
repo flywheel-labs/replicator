@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.14.0` install restore baseline.
+Current release: `v0.15.0` validation baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -128,6 +128,15 @@ python replicator/scripts/replicator.py restore \
   --json
 ```
 
+Validate a staged or installed provider root without executing anything:
+
+```bash
+python replicator/scripts/replicator.py validate \
+  --root .replicator-stage/codex \
+  --to codex \
+  --json
+```
+
 ## Usage
 
 Inventory your local provider config:
@@ -158,9 +167,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.14.0 Scope
+## v0.15.0 Scope
 
-Replicator v0.14.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, restore writes only from backup paths recorded in a Replicator install manifest, and JSON status is opt-in.
+Replicator v0.15.0 remains conservative. Inventory is read-only, generation writes drafts only to an output directory, comparison writes reports only to an output directory, staging writes only to an explicit isolated staging root, install writes only to an explicit live root, restore writes only from backup paths recorded in a Replicator install manifest, validation reads only from an explicit provider-like root, and JSON status is opt-in.
 
 It can:
 
@@ -204,6 +213,10 @@ It can:
 - write app-facing command contract docs with `contract`.
 - restore files from backup paths recorded in `replicator-install-manifest.json`,
 - write `replicator-restore-manifest.json`.
+- validate staged or installed provider-like roots,
+- discover staged/installed skills and MCP config drafts,
+- check Replicator stage, install, and restore manifests for referenced files,
+- write `validation-report.md`.
 
 It does not:
 
@@ -216,6 +229,7 @@ It does not:
 - execute, install, or validate MCP servers.
 - translate plugins, hooks, or scripts.
 - restore from arbitrary backup paths not recorded in a Replicator install manifest.
+- execute MCP servers, provider hooks, scripts, or generated skills during validation.
 
 ## Migration Shapes
 

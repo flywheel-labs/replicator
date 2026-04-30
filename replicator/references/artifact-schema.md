@@ -189,6 +189,28 @@ Restore manifest schema:
 
 Restore reads backup paths only from a Replicator install manifest. Files without recorded backups are skipped.
 
+## Validation Output
+
+Validation writes:
+
+- `<output>/validation-report.md`
+- JSON status data containing `replicator.validation.v1`
+
+Validation payload schema:
+
+- `schema`: `replicator.validation.v1`
+- `ok`
+- `target_provider`
+- `provider_root`
+- `summary`
+- `skills`
+- `mcp`
+- `manifests`
+- `findings`
+- `safety`
+
+Validation is read-only. It checks staged or installed skills, MCP config drafts, and Replicator stage/install/restore manifests for missing referenced files. It must not execute provider hooks, MCP servers, scripts, or generated skills.
+
 ## ACC Integration Outputs
 
 Doctor writes:

@@ -35,6 +35,36 @@ WORKFLOWS: dict[str, dict[str, object]] = {
             },
         ],
     },
+    "claude-to-codex-stage-validate": {
+        "description": "Inventory Claude config, generate Codex drafts, stage them, and validate the staged root.",
+        "writes_live_config": False,
+        "steps": [
+            {
+                "command": "inventory",
+                "providers": "claude",
+                "output": ".replicator-output-claude",
+            },
+            {
+                "command": "generate",
+                "from_bundle": ".replicator-output-claude/bundles/resonance-bundle.json",
+                "from_provider": "claude",
+                "to": "codex",
+                "output": ".replicator-drafts-codex",
+            },
+            {
+                "command": "stage",
+                "draft": ".replicator-drafts-codex",
+                "to": "codex",
+                "staging_root": ".replicator-stage",
+            },
+            {
+                "command": "validate",
+                "root": ".replicator-stage/codex",
+                "to": "codex",
+                "output": ".replicator-validate",
+            },
+        ],
+    },
     "codex-to-claude-draft": {
         "description": "Inventory Codex config and generate Claude drafts.",
         "writes_live_config": False,
@@ -114,7 +144,7 @@ def write_contract(output_dir: Path) -> Path:
                 "",
                 "## Safe Defaults",
                 "",
-                "- `inventory`, `generate`, `compare`, `stage`, `doctor`, and `workflow` do not write live provider config.",
+                "- `inventory`, `generate`, `compare`, `stage`, `validate`, `doctor`, and `workflow` do not write live provider config.",
                 "- `install` writes live provider config only when `--live-root` is explicitly supplied.",
                 "- Credentials, sessions, tokens, hooks, scripts, and executable plugins are not copied.",
                 "- MCP configs are copied only as manual-review drafts and are never executed.",
@@ -124,7 +154,7 @@ def write_contract(output_dir: Path) -> Path:
                 "1. Run `doctor --json`.",
                 "2. Show a selected `workflow --name <preset> --json` to the user.",
                 "3. Run `inventory` and `generate` with explicit output paths.",
-                "4. Prefer `stage` before `install`.",
+                "4. Prefer `stage` and `validate` before `install`.",
                 "5. Only run `install` after showing `--live-root` and backup behavior to the user.",
                 "",
             ]
@@ -132,4 +162,3 @@ def write_contract(output_dir: Path) -> Path:
         encoding="utf-8",
     )
     return path
-
