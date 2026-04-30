@@ -2,7 +2,7 @@
 
 Replicator is a provider-configuration portability skill for local AI agent ecosystems.
 
-Current release: `v0.4.0` Resonance Bundle schema baseline.
+Current release: `v0.5.0` Claude-to-Codex draft baseline.
 
 It inventories provider configuration, classifies what can be translated safely, and writes a **Resonance Report** plus a neutral bundle for review.
 
@@ -35,6 +35,21 @@ Outputs:
 - `.replicator-output/reports/resonance-report.md`
 - `.replicator-output/bundles/resonance-bundle.json`
 
+Generate Codex drafts from a Resonance Bundle:
+
+```bash
+python replicator/scripts/replicator.py generate \
+  --from-bundle .replicator-output/bundles/resonance-bundle.json \
+  --to codex \
+  --output .replicator-drafts
+```
+
+Draft outputs:
+
+- `.replicator-drafts/codex/manifest.json`
+- `.replicator-drafts/codex/skills/<skill-name>/SKILL.md`
+- `.replicator-drafts/codex/skills/<skill-name>/MIGRATION_NOTES.md`
+
 ## Usage
 
 Inventory your local provider config:
@@ -65,9 +80,9 @@ python3 replicator/scripts/replicator.py inventory \
 
 By default, Replicator skips cache/log/temp/build directories. Use `--include-cache` only when you need a complete filesystem inventory.
 
-## v0.4.0 Scope
+## v0.5.0 Scope
 
-Replicator v0.4.0 is intentionally read-only.
+Replicator v0.5.0 remains conservative. Inventory is read-only, and generation writes drafts only to an output directory.
 
 It can:
 
@@ -86,14 +101,18 @@ It can:
 - include source metadata,
 - checksum non-secret files,
 - skip secret checksums and itemize skipped-secret records.
+- generate Codex skill drafts from portable Claude `SKILL.md` artifacts,
+- write migration notes for each generated draft,
+- write a draft manifest that records generated and skipped artifacts.
 
 It does not:
 
 - copy credentials,
 - write live provider config,
-- generate target-provider drafts,
 - sync providers,
 - execute discovered scripts or hooks.
+- install generated drafts into `~/.codex`.
+- translate MCP servers, plugins, hooks, or scripts.
 
 ## Migration Shapes
 

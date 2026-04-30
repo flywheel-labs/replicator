@@ -53,7 +53,13 @@ python replicator/scripts/replicator.py inventory --providers claude,codex,openc
 
 Use `--max-depth` for bounded scans. Cache/log/temp/build directories are skipped by default; use `--include-cache` only when explicitly needed.
 
-Current baseline: v0.4.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`.
+Generate Codex drafts from a Resonance Bundle:
+
+```bash
+python replicator/scripts/replicator.py generate --from-bundle .replicator-output/bundles/resonance-bundle.json --to codex --output .replicator-drafts
+```
+
+Current baseline: v0.5.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config.
 
 ## References
 

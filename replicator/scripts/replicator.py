@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from replicator import __version__ as VERSION
 from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifact_type
+from replicator.drafts import SUPPORTED_TARGETS, generate_codex_drafts
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
 
 DEFAULT_EXCLUDED_DIRS = {
@@ -272,6 +273,26 @@ def command_inventory(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_generate(args: argparse.Namespace) -> int:
+    target = args.to.lower()
+    if target not in SUPPORTED_TARGETS:
+        raise SystemExit(f"Unsupported target provider for draft generation: {args.to}")
+
+    bundle_path = Path(args.from_bundle)
+    output_dir = Path(args.output)
+    if target == "codex":
+        results = generate_codex_drafts(bundle_path, output_dir)
+    else:
+        raise SystemExit(f"Unsupported target provider for draft generation: {args.to}")
+
+    generated = sum(1 for result in results if result.status == "generated")
+    skipped = sum(1 for result in results if result.status == "skipped")
+    print(f"Wrote Codex draft manifest: {output_dir / 'codex' / 'manifest.json'}")
+    print(f"Generated drafts: {generated}")
+    print(f"Skipped artifacts: {skipped}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="replicator")
     parser.add_argument("--version", action="version", version=f"replicator {VERSION}")
@@ -313,6 +334,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Exclude hidden files and directories below provider roots.",
     )
     inventory.set_defaults(func=command_inventory)
+
+    generate = subparsers.add_parser("generate", help="Generate target-provider draft config from a Resonance Bundle.")
+    generate.add_argument(
+        "--from-bundle",
+        required=True,
+        help="Path to a resonance-bundle.json file.",
+    )
+    generate.add_argument(
+        "--to",
+        required=True,
+        choices=sorted(SUPPORTED_TARGETS),
+        help="Target provider for generated drafts.",
+    )
+    generate.add_argument("--output", default=".replicator-drafts", help="Draft output directory.")
+    generate.set_defaults(func=command_generate)
     return parser
 
 

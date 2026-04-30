@@ -8,6 +8,11 @@
 .replicator-output-v030-anthropic-skills/
 .replicator-output-v040-fixture/
 .replicator-output-v040-anthropic-skills/
+.replicator-output-v050-fixture/
+.replicator-output-v050-anthropic-skills/
+.replicator-drafts/
+.replicator-drafts-v050-fixture/
+.replicator-drafts-v050-anthropic-skills/
 .replicator-external-fixtures/
 .external-sources/
 __pycache__/
