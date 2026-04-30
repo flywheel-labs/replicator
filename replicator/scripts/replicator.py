@@ -20,6 +20,7 @@ from replicator.adapters import PROVIDERS, ProviderSpec, classify, infer_artifac
 from replicator.compare import compare_bundles, write_comparison
 from replicator.drafts import SUPPORTED_TARGETS, generate_claude_drafts, generate_codex_drafts
 from replicator.schema import build_bundle_payload, stable_artifact_id, validate_bundle_payload
+from replicator.status import print_json_status, status_payload
 
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
@@ -179,7 +180,7 @@ def write_bundle(
     return bundle_path
 
 
-def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
+def write_report(output_dir: Path, artifacts: list[Artifact], *, compact: bool = False) -> Path:
     report_dir = output_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "resonance-report.md"
@@ -222,6 +223,9 @@ def write_report(output_dir: Path, artifacts: list[Artifact]) -> Path:
         *[f"- `{key}`: {value}" for key, value in summarize_artifacts(artifacts)["by_artifact_type"].items()],
         "",
     ]
+    if compact:
+        report_path.write_text("\n".join(lines), encoding="utf-8")
+        return report_path
 
     for provider, provider_artifacts in sorted(by_provider.items()):
         display = PROVIDERS.get(provider, ProviderSpec(provider, provider, ())).display_name
@@ -266,7 +270,23 @@ def command_inventory(args: argparse.Namespace) -> int:
     for spec in specs:
         artifacts.extend(inventory_provider(spec, options))
     bundle_path = write_bundle(output_dir, artifacts, options)
-    report_path = write_report(output_dir, artifacts)
+    report_path = write_report(output_dir, artifacts, compact=args.compact_report)
+    data = {
+        "report_path": str(report_path),
+        "bundle_path": str(bundle_path),
+        "artifact_count": len(artifacts),
+        "credential_reference_count": sum(1 for a in artifacts if a.contains_secret_reference),
+        "summary": summarize_artifacts(artifacts),
+    }
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Inventory completed.",
+                command="inventory",
+                data=data,
+            )
+        )
+        return 0
     print(f"Wrote Resonance Report: {report_path}")
     print(f"Wrote Resonance Bundle: {bundle_path}")
     print(f"Artifacts: {len(artifacts)}")
@@ -290,7 +310,22 @@ def command_generate(args: argparse.Namespace) -> int:
 
     generated = sum(1 for result in results if result.status == "generated")
     skipped = sum(1 for result in results if result.status == "skipped")
-    print(f"Wrote {target} draft manifest: {output_dir / target / 'manifest.json'}")
+    manifest_path = output_dir / target / "manifest.json"
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Draft generation completed.",
+                command="generate",
+                data={
+                    "target_provider": target,
+                    "manifest_path": str(manifest_path),
+                    "generated_count": generated,
+                    "skipped_count": skipped,
+                },
+            )
+        )
+        return 0
+    print(f"Wrote {target} draft manifest: {manifest_path}")
     print(f"Generated drafts: {generated}")
     print(f"Skipped artifacts: {skipped}")
     return 0
@@ -299,7 +334,20 @@ def command_generate(args: argparse.Namespace) -> int:
 def command_compare(args: argparse.Namespace) -> int:
     output_dir = Path(args.output)
     comparison = compare_bundles(Path(args.left), Path(args.right))
-    report_path, json_path = write_comparison(output_dir, comparison)
+    report_path, json_path = write_comparison(output_dir, comparison, compact=args.compact_report)
+    if args.json:
+        print_json_status(
+            status_payload(
+                message="Comparison completed.",
+                command="compare",
+                data={
+                    "report_path": str(report_path),
+                    "comparison_path": str(json_path),
+                    "summary": comparison["summary"],
+                },
+            )
+        )
+        return 0
     print(f"Wrote Comparison Report: {report_path}")
     print(f"Wrote Comparison JSON: {json_path}")
     print(f"Items compared: {comparison['summary']['item_count']}")
@@ -350,6 +398,8 @@ def build_parser() -> argparse.ArgumentParser:
         dest="include_hidden",
         help="Exclude hidden files and directories below provider roots.",
     )
+    inventory.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    inventory.add_argument("--compact-report", action="store_true", help="Write summary-only markdown report.")
     inventory.set_defaults(func=command_inventory)
 
     generate = subparsers.add_parser("generate", help="Generate target-provider draft config from a Resonance Bundle.")
@@ -365,12 +415,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target provider for generated drafts.",
     )
     generate.add_argument("--output", default=".replicator-drafts", help="Draft output directory.")
+    generate.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
     generate.set_defaults(func=command_generate)
 
     compare = subparsers.add_parser("compare", help="Compare two Resonance Bundles.")
     compare.add_argument("--left", required=True, help="Left/source resonance-bundle.json.")
     compare.add_argument("--right", required=True, help="Right/target resonance-bundle.json.")
     compare.add_argument("--output", default=".replicator-compare", help="Comparison output directory.")
+    compare.add_argument("--json", action="store_true", help="Emit machine-readable JSON status.")
+    compare.add_argument("--compact-report", action="store_true", help="Write summary-only markdown report.")
     compare.set_defaults(func=command_compare)
     return parser
 

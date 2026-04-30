@@ -71,7 +71,9 @@ Compare two Resonance Bundles:
 python replicator/scripts/replicator.py compare --left .replicator-output-claude/bundles/resonance-bundle.json --right .replicator-output-codex/bundles/resonance-bundle.json --output .replicator-compare
 ```
 
-Current baseline: v0.7.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`.
+Use `--json` on `inventory`, `generate`, and `compare` when an app needs machine-readable status. Use `--compact-report` on `inventory` and `compare` when an app needs lower-volume markdown.
+
+Current baseline: v0.8.0. Provider specs and conservative artifact classification live in `replicator/adapters.py`; use that module when changing provider behavior. Resonance Bundle v1 helpers live in `replicator/schema.py`. Draft generation lives in `replicator/drafts.py` and writes output-only drafts, not live provider config. Bundle comparison lives in `replicator/compare.py`. CLI status helpers live in `replicator/status.py`.
 
 ## References
 

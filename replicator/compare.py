@@ -116,7 +116,7 @@ def count_by(items: list[str] | Any) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
-def write_comparison(output_dir: Path, comparison: dict[str, Any]) -> tuple[Path, Path]:
+def write_comparison(output_dir: Path, comparison: dict[str, Any], *, compact: bool = False) -> tuple[Path, Path]:
     report_dir = output_dir / "reports"
     bundle_dir = output_dir / "bundles"
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -124,11 +124,11 @@ def write_comparison(output_dir: Path, comparison: dict[str, Any]) -> tuple[Path
     json_path = bundle_dir / "comparison.json"
     report_path = report_dir / "comparison-report.md"
     json_path.write_text(json.dumps(comparison, indent=2) + "\n", encoding="utf-8")
-    report_path.write_text(render_comparison_report(comparison), encoding="utf-8")
+    report_path.write_text(render_comparison_report(comparison, compact=compact), encoding="utf-8")
     return report_path, json_path
 
 
-def render_comparison_report(comparison: dict[str, Any]) -> str:
+def render_comparison_report(comparison: dict[str, Any], *, compact: bool = False) -> str:
     summary = comparison["summary"]
     lines = [
         "# Replicator Comparison Report",
@@ -145,9 +145,10 @@ def render_comparison_report(comparison: dict[str, Any]) -> str:
         "",
         *[f"- `{key}`: {value}" for key, value in summary["by_status"].items()],
         "",
-        "## Items",
-        "",
     ]
+    if compact:
+        return "\n".join(lines)
+    lines.extend(["## Items", ""])
     for item in comparison["items"]:
         lines.extend(
             [
@@ -162,4 +163,3 @@ def render_comparison_report(comparison: dict[str, Any]) -> str:
             ]
         )
     return "\n".join(lines)
-

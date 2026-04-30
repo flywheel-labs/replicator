@@ -89,3 +89,21 @@ Comparison item statuses:
 - `right_only`
 - `manual_only_left`
 - `manual_only_right`
+
+## CLI Status Output
+
+Commands can emit machine-readable status with `--json`.
+
+Status schema:
+
+- `schema`: `replicator.cli_status.v1`
+- `status`: `ok` or `error`
+- `code`: stable machine-readable code
+- `message`
+- `command`
+- `data`
+
+Current stable codes:
+
+- `REP_OK`
+- `REP_ERROR`

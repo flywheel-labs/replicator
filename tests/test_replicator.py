@@ -26,11 +26,11 @@ replicator_cli = load_cli_module()
 
 
 class ReplicatorTests(unittest.TestCase):
-    def test_version_flag_reports_v0_7_0(self):
+    def test_version_flag_reports_v0_8_0(self):
         script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
         result = run([sys.executable, str(script), "--version"], capture_output=True, text=True, check=True)
 
-        self.assertEqual(result.stdout.strip(), "replicator 0.7.0")
+        self.assertEqual(result.stdout.strip(), "replicator 0.8.0")
 
     def test_secret_paths_are_not_portable(self):
         path = Path("/tmp/.claude/session-token.json")
@@ -117,7 +117,7 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertEqual(bundle["schema"], "replicator.resonance_bundle.v1")
         self.assertEqual(bundle["schema_version"], "1.0.0")
-        self.assertEqual(bundle["replicator_version"], "0.7.0")
+        self.assertEqual(bundle["replicator_version"], "0.8.0")
         self.assertIn("source_metadata", bundle)
         self.assertEqual(bundle["artifacts"][0]["artifact_id"], schema.stable_artifact_id("codex", "/tmp/.codex/skills/demo/SKILL.md", "skill_or_prompt"))
         self.assertEqual(bundle["artifacts"][0]["checksum_status"], "missing")
@@ -379,6 +379,90 @@ class ReplicatorTests(unittest.TestCase):
 
         self.assertIn("Wrote Comparison Report:", result.stdout)
         self.assertIn("Items compared:", result.stdout)
+
+    def test_inventory_json_status_and_compact_report(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "inventory"
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "inventory",
+                    "--providers",
+                    "claude",
+                    "--root",
+                    str(root),
+                    "--output",
+                    str(output),
+                    "--compact-report",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            report = (output / "reports" / "resonance-report.md").read_text(encoding="utf-8")
+
+        self.assertEqual(payload["schema"], "replicator.cli_status.v1")
+        self.assertEqual(payload["code"], "REP_OK")
+        self.assertEqual(payload["command"], "inventory")
+        self.assertIn("artifact_count", payload["data"])
+        self.assertNotIn("### `", report)
+
+    def test_compare_json_status_and_compact_report(self):
+        root = Path(__file__).resolve().parent / "fixtures" / "home"
+        script = Path(__file__).resolve().parents[1] / "replicator" / "scripts" / "replicator.py"
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = Path(temp)
+            left_output = temp_path / "left"
+            right_output = temp_path / "right"
+            compare_output = temp_path / "compare"
+            for provider, output in (("claude", left_output), ("codex", right_output)):
+                run(
+                    [
+                        sys.executable,
+                        str(script),
+                        "inventory",
+                        "--providers",
+                        provider,
+                        "--root",
+                        str(root),
+                        "--output",
+                        str(output),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+            result = run(
+                [
+                    sys.executable,
+                    str(script),
+                    "compare",
+                    "--left",
+                    str(left_output / "bundles" / "resonance-bundle.json"),
+                    "--right",
+                    str(right_output / "bundles" / "resonance-bundle.json"),
+                    "--output",
+                    str(compare_output),
+                    "--compact-report",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            payload = __import__("json").loads(result.stdout)
+            report = (compare_output / "reports" / "comparison-report.md").read_text(encoding="utf-8")
+
+        self.assertEqual(payload["schema"], "replicator.cli_status.v1")
+        self.assertEqual(payload["code"], "REP_OK")
+        self.assertEqual(payload["command"], "compare")
+        self.assertIn("summary", payload["data"])
+        self.assertNotIn("## Items", report)
 
 
 if __name__ == "__main__":
